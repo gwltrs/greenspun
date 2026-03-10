@@ -29,6 +29,7 @@ Either the type or the initial value (but not both) can be omitted. If the initi
 
 ```(var x y z 0)```
 
-Greenspun improves upon C's multiple variable syntax as all variables below are pointers.
+Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
