@@ -12,7 +12,16 @@ I'll counter with this: why don't more languages just use Lisp syntax and reap t
 
 # Reference
 
+
+
 ## Forms
+
+### Function
+
+```
+(function map ()
+)
+```
 
 ### Let
 
@@ -46,5 +55,6 @@ Either the type or the initial value (but not both) can be omitted. If the initi
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
