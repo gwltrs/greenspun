@@ -14,6 +14,20 @@ I'll counter with this: why don't more languages just use Lisp syntax and reap t
 
 ## Forms
 
+### Let
+
+Sequentially-binds the given name-value pairs and evaluates to the last expression given.
+
+```(let s (lambda x (* x x)) as (s a) bs (s a) (sqrt (+ as bs)))```
+
+The variables are mutable.
+
+```(let x 0 _ (++ x) _ (++ x) x)```
+
+Let forms with no bindings are permitted.
+
+```(sqrt (let 3.14))```
+
 ### Var
 Creates mutable variable(s).
 
@@ -32,4 +46,5 @@ Either the type or the initial value (but not both) can be omitted. If the initi
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
