@@ -18,7 +18,7 @@ See also [Why doesn't this "Lisp" have feature X?](#why-doesnt-this-lisp-have-fe
 
 ### Why is everything named in a verbose manner?
 
-Let's take ```function``` for example. In a previous Lisp I implemented, I leaned heavily into concise variable names. ```function``` was ```fn```, ```double``` was ```*2```, ```last``` was ```@-1```. I felt like I had crammed all my functions into the combinatorial space of 2-3 character names. Heaven on earth achieved. And then the unthinkable happened. I kept having to look up names. Was it ```fn``` (**Rust**), or ```fun``` (**Kotlin**), or ```func``` (**Swift**), or ```defn``` (**Clojure**), or ```defun``` (**Common Lisp**), or ```function``` (**JavaScript**), or even ```->```? (a symbol I'd considered) I discovered that once abbreviations are fair game, the increased difficulty of remembering what compression I'd settled on erased any time-saving gains I got from the short identifiers when typing them out. However, I won't be un-abbreviating standard C functions and operators; I'll be keeping ```+``` instead of ```add```, ```<``` instead of ```less_than```, and ```ceil``` instead of ```ceiling```. Another benefit we get from full-word global identifiers is that it keeps the namespace uncluttered for local variables, which I think should be only one or a few characters long. Lastly, wordy form identifiers make the code nicer to read; I find it easier to ascertain the shape of the file with ```function``` and ```operator``` popping out at me rather than having to squint my eyes at ```fn``` and ```op```.
+Let's take ```function``` for example. In a previous Lisp I implemented, I leaned heavily into concise variable names. ```function``` was ```fn```, ```double``` was ```*2```, ```last``` was ```@-1```. I felt like I had crammed all my functions into the combinatorial space of 2-3 character names. Heaven on earth achieved. And then the unthinkable happened. I kept having to look up names. Was it ```fn``` (**Rust**), or ```fun``` (**Kotlin**), or ```func``` (**Swift**), or ```defn``` (**Clojure**), or ```defun``` (**Common Lisp**), or ```function``` (**JavaScript**), or even ```->```? (a symbol I'd considered) I discovered that once abbreviations are fair game, the increased difficulty of remembering what compression I'd settled on erased any time-saving gains I got from the short identifiers when typing them out. Another benefit we get from full-word global identifiers is that it keeps the namespace uncluttered for local variables, which I think should be only one or a few characters long. Lastly, wordy form identifiers make the code nicer to read; I find it easier to ascertain the shape of the file with ```function``` and ```operator``` popping out at me rather than having to squint my eyes at ```fn``` and ```op```. However, I won't be un-abbreviating standard C functions and operators; I'll be keeping ```+``` instead of ```add```, ```<``` instead of ```less_than```, and ```ceil``` instead of ```ceiling```. 
 
 ### Why is the type inference so bad?
 
@@ -73,6 +73,7 @@ Either the type or the initial value (but not both) can be omitted. If the initi
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
