@@ -22,7 +22,9 @@ Let's take ```function``` for example. In a previous Lisp I implemented, I leane
 
 ### Why are type annotations required?
 
-For similar reasons to [Why is everything named in a verbose manner?](#why-is-everything-named-in-a-verbose-manner). Omitting types doesn't save time in the long run, at least not for me personally. I lean on type-driven development so much that when types are inferred.
+For similar reasons to [Why is everything named in a verbose manner?](#why-is-everything-named-in-a-verbose-manner). Omitting types doesn't save time in the long run, at least not for me personally. I lean on type-driven development so much that when types are inferred, I find that much of my headspace is consumed by my anxiety- and curiosity-driven desire to know the concrete types of the data I'm working with. In addition, when I have a confusing compile-time type error that I'm not able to easily resolve because I'm in a language that champions type inference (like Haskell), I find that adding optional type annotations to the problem code either clarifies my confusion quickly or at least ends up being a time-saving precursor to deeper debugging. 
+
+the simplest solution for me is just to add all the optional type annotations to the variables in the problem function, which usually narrows it down to a single line.
 
 I've always preferred C#/C++ style variable/function definitions as it 
 
@@ -90,6 +92,7 @@ Either the type or the initial value (but not both) can be omitted. If the initi
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
