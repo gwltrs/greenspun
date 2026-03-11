@@ -14,6 +14,15 @@ I'll counter with this: why don't more languages just use Lisp syntax and reap t
 
 Yup. When I first started learning about Lisp, I fell in love with the naming flexibility and started writing a bunch of little functions like ```0?```. In hindsight, ```(is_zero x)``` instead of ```(0? x)``` isn't the devastating loss of brevity I might have once thought. So if we give up the symbol-number-letter combinations in our variable and function names, which isn't really pushing the expressiveness needle forward that much, what can we get in return? I think the answer is operators.
 
+### Why is everything named in a verbose manner?
+
+Let's take ```function``` for example. In a previous Lisp I implemented, I leaned heavily into concise variable names. ```function``` was ```fn```, ```double``` was ```*2```, ```last``` was ```@-1```. I felt like I had crammed all my functions into the combinatorial space of 2-3 character names. Heaven on earth achieved. And then the unthinkable happened. I kept having to look up the function names. Was it ```fn``` (**Rust**), or ```fun``` (**Kotlin**), or ```func``` (**Swift**), or ```defun``` (**Common Lisp**), or ```defn``` (**Clojure**), or ```function``` (**JavaScript**), or even ```->```? (a symbol I'd considered) I discovered that once abbreviations are fair game, 
+
+That being said, (sticking to C names)
+
+and it cleares out the namespace for local variables, which I think can and often should be only one or a few characters long as 
+
+I property that I recently articualted is the ability the quickly ascertain the shape of a file
 
 # Reference
 
@@ -30,7 +39,7 @@ Yup. When I first started learning about Lisp, I fell in love with the naming fl
 
 ### Let
 
-Sequentially-binds the given name-value pairs and evaluates to the last expression given.
+Sequentially binds the given name-value pairs and evaluates to the last expression given.
 
 ```(let s (lambda x (* x x)) as (s a) bs (s a) (sqrt (+ as bs)))```
 
@@ -60,6 +69,7 @@ Either the type or the initial value (but not both) can be omitted. If the initi
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
