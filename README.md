@@ -20,28 +20,9 @@ See also [Why doesn't this "Lisp" have feature X?](#why-doesnt-this-lisp-have-fe
 
 Let's take ```function``` for example. In a previous Lisp I implemented, I leaned heavily into concise variable names. ```function``` was ```fn```, ```double``` was ```*2```, ```last``` was ```@-1```. I felt like I had crammed all my functions into the combinatorial space of 2-3 character names. Heaven on earth achieved. And then the unthinkable happened. I kept having to look up names. Was it ```fn``` (**Rust**), or ```fun``` (**Kotlin**), or ```func``` (**Swift**), or ```defn``` (**Clojure**), or ```defun``` (**Common Lisp**), or ```function``` (**JavaScript**), or even ```->```? (a symbol I'd considered) I discovered that once abbreviations are fair game, the increased difficulty of remembering what compression I'd settled on erased any time-saving gains I got from the short identifiers when typing them out. However, I won't be un-abbreviating standard C functions and operators; I'll be keeping ```+``` instead of ```add```, ```<``` instead of ```less_than```, and ```ceil``` instead of ```ceiling```. Another benefit we get from full-word global identifiers is that it keeps the namespace uncluttered for local variables, which I think should be only one or a few characters long. Lastly, wordy form identifiers make the code nicer to read; I find it easier to ascertain the shape of the file with ```function``` and ```operator``` popping out at me rather than having to squint my eyes at ```fn``` and ```op```.
 
-### Why are type annotations required?
+### Why is the type inference so bad?
 
-For similar reasons to [Why is everything named in a verbose manner?](#why-is-everything-named-in-a-verbose-manner). Omitting types doesn't save time in the long run, at least not for me personally. I lean on type-driven development so much that when types are inferred, I find that much of my headspace is consumed by my anxiety- and curiosity-driven desire to know the concrete types of the data I'm working with. In addition, when I have a confusing compile-time type error that I'm not able to easily resolve because I'm in a language that champions type inference (like Haskell), I find that adding optional type annotations to the problem code either clarifies my confusion quickly or at least ends up being a time-saving precursor to deeper debugging. 
-
-the simplest solution for me is just to add all the optional type annotations to the variables in the problem function, which usually narrows it down to a single line.
-
-I've always preferred C#/C++ style variable/function definitions as it 
-
-Don't care about local immutability
-
-I'm also making compilation speed a priority from the start and from my experience 
-
-If you mean "why am I forced to manually put types everywhere?", subjective, personal readability. In Greenspun, all expressions are determined by the arguments 
-
-When all 
-
-One of the design goals is to have all expressions type 
-
-It can also speed up compilation by quite a lot. As much as I love Swift, I started to not like it's type inference. 
-Compilation speed and read
-
-I'll give you an official reason and then a personal one. Officially, I'm striving for fast parsing and compilation and by 
+For similar reasons to [Why is everything named in a verbose manner?](#why-is-everything-named-in-a-verbose-manner). Omitting types doesn't personally save me time in the long run. I lean on type-driven development so much that when types are inferred, I find that much of my headspace is consumed by my anxiety- and curiosity-driven desire to know the concrete types of the data I'm working with. In addition, when I have a confusing compile-time type error that I'm not able to easily resolve because I'm in a language that champions type inference (like Haskell), I find that adding optional type annotations to the problem code either clarifies my confusion quickly or at least ends up being a time-saving precursor to deeper debugging. This raises the question: why not just add the types in the first place?
 
 ### Why do I have to use "." in floating-point literals?
 
@@ -92,6 +73,7 @@ Either the type or the initial value (but not both) can be omitted. If the initi
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
