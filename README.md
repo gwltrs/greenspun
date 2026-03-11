@@ -8,13 +8,11 @@ Rather than enumerate the design decisions behind the language, I'll present the
 
 ### Why doesn't this "Lisp" have feature X?
 
-I'll counter with this: why don't more languages just use Lisp syntax and reap the low-hanging benefits of easy parsing and macros without feeling the obligation to adopt and implement the entire paradigm? I've been asking myself this question since becoming an obsessive reader of Paul Graham essays. This is what I'm exploring with Greenspun and I see it less as a Lisp dialect and more as C descendant with Lisp syntax. So in regards to feature X, I might implement it in the future, but the main things I want from Lisp are compile-time macros and runtime evals.
+I'll counter with this: why don't more languages just use Lisp syntax and reap the low-hanging benefits of easy parsing and macros without feeling the obligation to adopt and implement the entire paradigm? I've been asking myself this question since becoming an obsessive reader of Paul Graham essays. This is what I'm exploring with Greenspun and I see it less as a Lisp dialect and more as C with Lisp syntax. This is especially exciting because I feel like low-level, performance-cognizant languages have the most to gain from Lisp macros. So in regards to feature X, I might implement it in the future, but the main things I want from Lisp are compile-time macros and runtime evals.
 
 ### Operators?! In a Lisp?!
 
-Yup. When I first started learning about Lisp, I fell in love with the naming flexibility and started writing a bunch of little functions like ```0?```. In hindsight, ```(is_zero x)``` instead of ```(0? x)``` isn't the devastating loss of brevity I might have once thought. So if we give up the symbol-number-letter combinations in our variable and function names, which isn't really pushing the expressiveness needle forward that much, what can we get in return? I think the answer is operators.
-
-See also [Why doesn't this "Lisp" have feature X?](#why-doesnt-this-lisp-have-feature-x)
+In general, the reason why I have an unusual feature is also [why I'm missing standard Lisp features](#why-doesnt-this-lisp-have-feature-x). In regards to operators, when I first started learning about Lisp, I fell in love with the naming flexibility and started writing a bunch of little functions like ```0?```. In hindsight, ```(is_zero x)``` instead of ```(0? x)``` isn't the devastating loss of brevity I might have once thought. So if we give up the symbol-number-letter combinations in our variable and function names, which isn't really pushing the expressiveness needle forward that much, what can we get in return? We get operators. With strict operator rules, we get to do C-style things like ```-box.pos.x``` while not interfering with macros.
 
 ### Why is everything named in a verbose manner?
 
@@ -22,7 +20,7 @@ Let's take ```function``` for example. In a previous Lisp I implemented, I leane
 
 ### Why is the type inference so bad?
 
-For similar reasons to [Why is everything named in a verbose manner?](#why-is-everything-named-in-a-verbose-manner). Omitting types doesn't personally save me time in the long run. I lean on type-driven development so much that when types are inferred, I find that much of my headspace is consumed by my anxiety- and curiosity-driven desire to know the concrete types of the data I'm working with. In addition, when I have a confusing compile-time type error that I'm not able to easily resolve because I'm in a language that champions type inference (like Haskell), I find that adding optional type annotations to the problem code either clarifies my confusion quickly or at least ends up being a time-saving precursor to deeper debugging. This raises the question: why not just add the types in the first place?
+For similar reasons to [why everything is named in a verbose manner](#why-is-everything-named-in-a-verbose-manner). Omitting types doesn't personally save me time in the long run. I lean on type-driven development so much that when types are inferred, I find that much of my headspace is consumed by my anxiety- and curiosity-driven desire to know the concrete types of the data I'm working with. In addition, when I have a confusing compile-time type error that I'm not able to easily resolve because I'm in a language that champions type inference (like Haskell), I find that adding optional type annotations to the problem code either clarifies my confusion quickly or at least ends up being a time-saving precursor to deeper debugging. This raises the question: why not just add the types in the first place?
 
 ### Why do I have to use "." in floating-point literals?
 
@@ -73,6 +71,7 @@ Either the type or the initial value (but not both) can be omitted. If the initi
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
