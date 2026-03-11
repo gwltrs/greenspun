@@ -16,11 +16,15 @@ Yup. When I first started learning about Lisp, I fell in love with the naming fl
 
 ### Why is everything named in a verbose manner?
 
-Let's take ```function``` for example. In a previous Lisp I implemented, I leaned heavily into concise variable names. ```function``` was ```fn```, ```double``` was ```*2```, ```last``` was ```@-1```. I felt like I had crammed all my functions into the combinatorial space of 2-3 character names. Heaven on earth achieved. And then the unthinkable happened. I kept having to look up the function names. Was it ```fn``` (**Rust**), or ```fun``` (**Kotlin**), or ```func``` (**Swift**), or ```defun``` (**Common Lisp**), or ```defn``` (**Clojure**), or ```function``` (**JavaScript**), or even ```->```? (a symbol I'd considered) I discovered that once abbreviations are fair game, 
+Let's take ```function``` for example. In a previous Lisp I implemented, I leaned heavily into concise variable names. ```function``` was ```fn```, ```double``` was ```*2```, ```last``` was ```@-1```. I felt like I had crammed all my functions into the combinatorial space of 2-3 character names. Heaven on earth achieved. And then the unthinkable happened. I kept having to look up names. Was it ```fn``` (**Rust**), or ```fun``` (**Kotlin**), or ```func``` (**Swift**), or ```defn``` (**Clojure**), or ```defun``` (**Common Lisp**), or ```function``` (**JavaScript**), or even ```->```? (a symbol I'd considered) I discovered that once abbreviations are fair game, the increased difficulty of remembering what compression I settled on erased any time-saving gains I got from the shorter identifiers when typing them out. However, I think that 
+
+Another positive property we get from full-name global identifiers is that it cleares out the namespace for local variables, which I think often should be only one or a few characters long as 
+
+I also find that verbose top-level form identifiers are nice as they easier to recognize helps be I also enjoy longer top-level form identifiers as 
 
 That being said, (sticking to C names)
 
-and it cleares out the namespace for local variables, which I think can and often should be only one or a few characters long as 
+and 
 
 I property that I recently articualted is the ability the quickly ascertain the shape of a file
 
@@ -69,6 +73,7 @@ Either the type or the initial value (but not both) can be omitted. If the initi
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
