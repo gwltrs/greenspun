@@ -14,7 +14,7 @@ I'll counter with this: why don't more languages just use Lisp syntax and reap t
 
 Yup. When I first started learning about Lisp, I fell in love with the naming flexibility and started writing a bunch of little functions like ```0?```. In hindsight, ```(is_zero x)``` instead of ```(0? x)``` isn't the devastating loss of brevity I might have once thought. So if we give up the symbol-number-letter combinations in our variable and function names, which isn't really pushing the expressiveness needle forward that much, what can we get in return? I think the answer is operators.
 
-[click on this link](#why-doesnt-this-lisp-have-feature-x)
+See also [Why doesn't this "Lisp" have feature X?](#why-doesnt-this-lisp-have-feature-x)
 
 ### Why is everything named in a verbose manner?
 
@@ -65,6 +65,7 @@ Either the type or the initial value (but not both) can be omitted. If the initi
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
