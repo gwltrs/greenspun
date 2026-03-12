@@ -43,22 +43,22 @@ Functions with a return type must ```return``` (or ```abort```) in all branches.
     value
 )
 ```
-Functions that don't return a value can still use return.
+Functions that don't return a value can still use ```(return)``` to exit the function early.
 ```
 (function Void push_to_main_on_april_1st ()
     (if (> (rand) 0.001) (return))
     (abort)
 )
 ```
-Functions that don't return a value can omit both the return type and return statement.
+Functions that don't return a value can omit both the return type and the return statement.
 ```
 (function do_nothing ())
 ```
-```abort``` can be helpful when prototyping function signatures.
+```(abort)``` can be helpful when prototyping as it allows us to check for compile-time type errors before worrying about the implementations.
 ```
 (function [T] flat ([[T]] arrays) (abort))
 (function [T] flat4 ([[[[T]]]] arrays)
-    (flat (flat arrays))
+    (flat (flat (flat arrays)))
 )
 ```
 ### Let
@@ -97,6 +97,7 @@ Initialization can be opted out of.
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
