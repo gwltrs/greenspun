@@ -62,7 +62,7 @@ Multiple variables can be defined at once, all sharing the same type and initial
 
 ```(var I32 x y z 0)```
 
-Either the type or the initial value (but not both) can be omitted. If the initial value is omitted, the variables get set to the default value for that type.
+Either the type or the initial value (but not both) can be omitted. If the initial value is omitted, the variables get set to the default value for built-in types and ```(default)``` for custom types.
 
 ```(var I32 x y z)```
 
@@ -75,6 +75,7 @@ Initialization can be opted out of.
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
