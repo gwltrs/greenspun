@@ -64,6 +64,12 @@ Binary functions that have arguments of different types can opt in to being ```f
 (= secret_base_location (scale_vec2 4.0 secret_base_location))
 ```
 
+Binary functions with a return type that matches the type of the first argument can opt in to being ```folding```, allowing them to be called in a variadic manner. Under the hood, the      Other      ```folding``` overrides of that function will be searched formay be use
+
+```
+(function :folding I32 mult (I32 a I32 b) (* a b))
+(var I32 factorial_of_7 (mult 1 2 3 4 5 6 7))
+```
 
 ### Let
 
@@ -101,6 +107,7 @@ Initialization can be opted out of.
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
