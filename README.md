@@ -22,8 +22,6 @@ Let's take ```function``` for example. In a previous Lisp I implemented, I leane
 
 For similar reasons to [why everything is named in a verbose manner](#why-is-everything-named-in-a-verbose-manner). Omitting types doesn't personally save me time in the long run. I lean on type-driven development so much that when types are inferred, I find that much of my headspace is consumed by my anxiety- and curiosity-driven desire to know the concrete types of the data I'm working with. In addition, when I have a confusing compile-time type error that I'm not able to easily resolve because I'm in a language that champions type inference (like Haskell), I find that adding optional type annotations to the problem code either clarifies my confusion quickly or at least ends up being a time-saving precursor to deeper debugging. This raises the question: why not just add the types in the first place?
 
-### Why do I have to use "." in floating-point literals?
-
 
 
 # Reference
@@ -75,6 +73,7 @@ Initialization can be opted out of.
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
