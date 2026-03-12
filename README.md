@@ -22,11 +22,7 @@ Let's take ```function``` for example. In a previous Lisp I implemented, I leane
 
 For similar reasons to [why everything is named in a verbose manner](#why-is-everything-named-in-a-verbose-manner). Omitting types doesn't personally save me time in the long run. I lean on type-driven development so much that when types are inferred, I find that much of my headspace is consumed by my anxiety- and curiosity-driven desire to know the concrete types of the data I'm working with. In addition, when I have a confusing compile-time type error that I'm not able to easily resolve because I'm in a language that champions type inference (like Haskell), I find that adding optional type annotations to the problem code either clarifies my confusion quickly or at least ends up being a time-saving precursor to deeper debugging. This raises the question: why not just add the types in the first place?
 
-
-
 # Reference
-
-
 
 ## Forms
 
@@ -47,7 +43,7 @@ Functions with a return type must return a value in all branches. However, the f
     value
 )
 ```
-Functions that don't return a value can still call return without a value.
+Functions that don't return a value can still use return.
 ```
 (function Void push_to_main_on_april_1st ()
     (if (> (rand) 0.001) (return))
@@ -58,7 +54,6 @@ Functions that don't return a value can omit both the return type and return sta
 ```
 (function do_nothing ())
 ```
-
 
 ### Let
 
@@ -96,6 +91,7 @@ Initialization can be opted out of.
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
