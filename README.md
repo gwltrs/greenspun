@@ -35,19 +35,12 @@ Defines a function.
     (return 0)
 )
 ```
-Functions with a return type must ```return``` (or ```abort```) in all branches. However, the final ```return``` can be omitted the function ends with an expression that resolves to a value.
+Functions with a return type must ```return``` (or ```abort```) in all branches. However, the final ```return``` can be implicit if the function ends with an expression that resolves to a value.
 ```
 (function F32 clamp (F32 value F32 min F32 max)
     (if (< value min) (return min))
     (if (> value max) (return max))
     value
-)
-```
-```(abort)``` can be helpful when prototyping as it allows us to check for compile-time type errors before worrying about the implementations.
-```
-(function [T] flat ([[T]] arrays) (abort))
-(function [T] flat4 ([[[[T]]]] arrays)
-    (flat (flat (flat arrays)))
 )
 ```
 Functions that don't return a value can still use ```(return)``` to exit the function early.
@@ -108,6 +101,7 @@ Initialization can be opted out of.
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
