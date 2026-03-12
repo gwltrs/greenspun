@@ -43,6 +43,13 @@ Functions with a return type must ```return``` (or ```abort```) in all branches.
     value
 )
 ```
+```(abort)``` can be helpful when prototyping as it allows us to check for compile-time type errors before worrying about the implementations.
+```
+(function [T] flat ([[T]] arrays) (abort))
+(function [T] flat4 ([[[[T]]]] arrays)
+    (flat (flat (flat arrays)))
+)
+```
 Functions that don't return a value can still use ```(return)``` to exit the function early.
 ```
 (function Void push_to_main_on_april_1st ()
@@ -64,13 +71,7 @@ Binary functions that have arguments of different types can opt in to being ```f
 (= secret_base_location (scale_vec2 4.0 secret_base_location))
 ```
 
-```(abort)``` can be helpful when prototyping as it allows us to check for compile-time type errors before worrying about the implementations.
-```
-(function [T] flat ([[T]] arrays) (abort))
-(function [T] flat4 ([[[[T]]]] arrays)
-    (flat (flat (flat arrays)))
-)
-```
+
 ### Let
 
 Sequentially binds the given name-value pairs and evaluates to the last expression given.
@@ -107,6 +108,7 @@ Initialization can be opted out of.
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
