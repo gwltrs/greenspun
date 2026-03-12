@@ -32,10 +32,33 @@ For similar reasons to [why everything is named in a verbose manner](#why-is-eve
 
 ### Function
 
+Defines a function. 
+
 ```
-(function map ()
+(function I32 main (I32 count Str* args)
+    (return 0)
 )
 ```
+Functions with a return type must return a value in all branches. However, the final ```return``` can be omitted the function ends with an expression that evaluates to a value.
+```
+(function F32 clamp (F32 value F32 min F32 max)
+    (if (< value min) (return min))
+    (if (> value max) (return max))
+    value
+)
+```
+Functions that don't return a value can still call return without a value.
+```
+(function Void push_to_main_on_april_1st ()
+    (if (> (rand) 0.001) (return))
+    (abort)
+)
+```
+Functions that don't return a value can omit both the return type and return statement.
+```
+(function do_nothing ())
+```
+
 
 ### Let
 
@@ -73,6 +96,7 @@ Initialization can be opted out of.
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
