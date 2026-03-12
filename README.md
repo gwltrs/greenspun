@@ -54,6 +54,16 @@ Functions that don't return a value can omit both the return type and the return
 ```
 (function do_nothing ())
 ```
+
+Binary functions that have arguments of different types can opt in to being ```flippable```, allowing them to be called with the arguments reversed.
+
+```
+(function :flippable I32 scale_vec2 (Vec2 v F32 f)
+    (make_vec2 (* v.x f) (* v.y f))
+)
+(= secret_base_location (scale_vec2 4.0 secret_base_location))
+```
+
 ```(abort)``` can be helpful when prototyping as it allows us to check for compile-time type errors before worrying about the implementations.
 ```
 (function [T] flat ([[T]] arrays) (abort))
@@ -97,6 +107,7 @@ Initialization can be opted out of.
 Greenspun improves upon C's multiple variable syntax as all variables below (not just the first) are pointers.
 
 ```(var I32* x y z)```
+
 
 
 
