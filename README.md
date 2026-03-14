@@ -26,18 +26,18 @@ Rather than enumerate the design decisions behind the language, I'll present the
 
 ## Forms
 
-### Function
+### Fun
 
 Defines a function. 
 
 ```
-(function I32 main (I32 count Str* args)
+(fun I32 main (I32 count Str* args)
     (return 0)
 )
 ```
 Functions with a return type must ```return``` (or ```abort```) in all branches. However, the final ```return``` can be implicit if the function ends with an expression that resolves to a value.
 ```
-(function F32 clamp (F32 value F32 min F32 max)
+(fun F32 clamp (F32 value F32 min F32 max)
     (if (< value min) (return min))
     (if (> value max) (return max))
     value
@@ -45,29 +45,29 @@ Functions with a return type must ```return``` (or ```abort```) in all branches.
 ```
 Functions that don't return a value can still use ```(return)``` to exit the function early.
 ```
-(function Void push_to_main_on_april_1st ()
+(fun Void push_to_main_on_april_1st ()
     (if (> (rand) 0.001) (return))
     (abort)
 )
 ```
 Functions that don't return a value can omit both the return type and the return statement.
 ```
-(function do_nothing ())
+(fun do_nothing ())
 ```
 
-Binary functions that have arguments of different types can opt in to being ```flippable```, allowing them to be called with the arguments reversed.
+Binary functions that have arguments of different types can opt in to being flippable with ```:flip```, allowing them to be called with the arguments reversed.
 
 ```
-(function :flippable I32 scale_vec2 (Vec2 v F32 f)
+(fun :flip I32 scale_vec2 (Vec2 v F32 f)
     (make_vec2 (* v.x f) (* v.y f))
 )
 (= secret_base_location (scale_vec2 4.0 secret_base_location))
 ```
 
-Binary functions with a return type that matches the type of the first argument can opt in to being ```folding```, allowing them to be called in a variadic manner. Under the hood, the      Other      ```folding``` overrides of that function will be searched formay be use
+Binary functions with a return type that matches the type of the first parameter can opt in to being a folding function with ```:fold```, allowing them to be called in a variadic manner. Under the hood, the      Other      ```folding``` overrides of that function will be searched formay be use
 
 ```
-(function :folding I32 mult (I32 a I32 b) (* a b))
+(fun :fold I32 mult (I32 a I32 b) (* a b))
 (var I32 factorial_of_7 (mult 1 2 3 4 5 6 7))
 ```
 
