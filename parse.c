@@ -1,0 +1,97 @@
+#include "parse.h"
+#include "string.h"
+#include "stdlib.h"
+#include "utils.h"
+#include "stdio.h"
+
+char *show_eval_error(EvalError err) {
+    if (err == PARSE_MISMATCHED_PARENS) return "PARSE_MISMATCHED_PARENS"; 
+    if (err == PARSE_MISMATCHED_QUOTES) return "PARSE_MISMATCHED_QUOTES"; 
+    if (err == PARSE_END_OF_STRING) return "PARSE_END_OF_STRING"; 
+    if (err == EVAL_SYMBOL_UNKNOWN) return "EVAL_SYMBOL_UNKNOWN"; 
+    if (err == EVAL_ARGS_TOO_FEW) return "EVAL_ARGS_TOO_FEW"; 
+    if (err == EVAL_ARG_WRONG_TYPE) return "EVAL_ARG_WRONG_TYPE"; 
+    if (err == EVAL_ARG_BAD_VALUE) return "EVAL_ARG_BAD_VALUE"; 
+    if (err == EVAL_NUM_BAD_FORMAT) return "EVAL_NUM_BAD_FORMAT"; 
+    if (err == EVAL_NUM_BAD_VALUE) return "EVAL_NUM_BAD_VALUE"; 
+    if (err == EVAL_APPLY_ON_NON_FUNC) return "EVAL_APPLY_ON_NON_FUNC"; 
+    return "";
+}
+
+Tokens parse(char text[], EvalError *err) {
+    return parse_range(text, 0, strlen(text) - 1, err);
+}
+
+Tokens parse_range(char text[], int start, int end, EvalError *err) {
+    int start_ = start, end_ = end;
+    Tokens ts = da_empty(Tokens);
+    while (find_token(text, &start_, &end_, err)) {
+        if (*err) { da_free(ts); return da_empty(Tokens); }
+        if (text[start_] == '(') {
+            da_push(ts, token_from_tokens(parse_range(text, start_ + 1, end_ - 1, err)));
+        } else {
+            da_push(ts, token_from_text(substring(text, start_, end_)));
+        }
+        start_ = end_ + 1;
+        end_ = end;
+    }
+    return ts;
+}
+
+bool find_token(char text[], int *start, int *end, EvalError *err) {
+    if (*start > *end) return false;
+    while (text[*start] == ' ' || text[*start] == '\n') {
+        if (*start == *end) return false;
+        (*start)++;
+    }
+    if (text[*start] == ')') { *err = PARSE_MISMATCHED_PARENS; return false; } 
+    else if (text[*start] == '\0') { *err = PARSE_END_OF_STRING; return false; }
+    else if (text[*start] == '(') {
+        int depth = 1;
+        bool in_quotes = false;
+        *end = *start;
+        while (depth > 0) {
+            (*end)++;
+            if (text[*end] == '(' && !in_quotes) depth++;
+            if (text[*end] == ')' && !in_quotes) depth--;
+            if (text[*end] == '\0') { *err = PARSE_MISMATCHED_PARENS; return false; }
+            if (text[*end] == '"') in_quotes = !in_quotes;
+        }
+        return true;
+    } else if (text[*start] == '"') {
+        *end = *start + 1; 
+        while (text[*end] != '"') {
+            if (text[*end] == '\n' || text[*end] == '\0') { *err = PARSE_MISMATCHED_QUOTES; return false; }
+            (*end)++;
+        }
+        return true;
+    } else {
+        *end = *start; 
+        while ((33 <= text[*end + 1] && text[*end + 1] <= 126) && text[*end + 1] != '(' && text[*end + 1] != ')') (*end)++;
+        return true;
+    }
+}
+
+void print_tokens(Tokens tokens) {
+    for (int i = 0; i < tokens.count; i++) {
+        if (i > 0) printf(" ");
+        if (tokens.array[i].type == TT_TEXT) {
+            printf("%s", tokens.array[i].union_.text);
+        } else {
+            printf("(");
+            print_tokens(*tokens.array[i].union_.array);
+            printf(")");
+        }
+    }
+}
+
+Token token_from_tokens(Tokens tokens) { 
+    Tokens *new_tokens = malloc(sizeof(Tokens));
+    new_tokens->array = tokens.array;
+    new_tokens->count = tokens.count;
+    return ((Token){ .type = TT_ARRAY, .union_ = { .array = new_tokens }});
+}
+
+Token token_from_text(char *text) { 
+    return ((Token){ .type = TT_TEXT, .union_ = { .text = text }});
+}
