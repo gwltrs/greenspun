@@ -1,7 +1,7 @@
 #ifndef PARSE_H
 #define PARSE_H
 
-#include "stdbool.h"
+#include "gew.h"
 
 typedef enum {
     PARSE_MISMATCHED_PARENS = 1,
@@ -18,17 +18,17 @@ typedef enum {
 
 char *show_eval_error(EvalError err);
 
-typedef enum { TT_TEXT, TT_ARRAY } TokenType;
-struct Tokens;
-typedef union { char *text; struct Tokens *array; } TokenUnion;
-typedef struct { TokenType type; TokenUnion union_; } Token;
-typedef struct Tokens { Token *array; int count; int capacity; } Tokens;
+typedef enum { AST_ATOM, AST_LIST } ASTType;
+struct ASTs;
+typedef union { char *atom; struct ASTs *list; } ASTUnion;
+typedef struct { ASTType type; ASTUnion union_; } AST;
+typedef struct ASTs { AST *array; int count; int capacity; } ASTs;
 
-Tokens parse(char text[], EvalError *err);
-Tokens parse_range(char text[], int start, int end, EvalError *err);
+ASTs parse(char text[], EvalError *err);
+ASTs parse_range(char text[], int start, int end, EvalError *err);
 bool find_token(char text[], int *start, int *end, EvalError *err);
-void print_tokens(Tokens tokens);
-Token token_from_tokens(Tokens tokens);
-Token token_from_text(char *text);
+void print_tokens(ASTs asts);
+AST token_from_tokens(ASTs asts);
+AST atom_from_text(char *text);
 
 #endif

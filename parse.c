@@ -18,19 +18,19 @@ char *show_eval_error(EvalError err) {
     return "";
 }
 
-Tokens parse(char text[], EvalError *err) {
+ASTs parse(char text[], EvalError *err) {
     return parse_range(text, 0, strlen(text) - 1, err);
 }
 
-Tokens parse_range(char text[], int start, int end, EvalError *err) {
+ASTs parse_range(char text[], int start, int end, EvalError *err) {
     int start_ = start, end_ = end;
-    Tokens ts = da_empty(Tokens);
+    ASTs ts = da_empty(ASTs);
     while (find_token(text, &start_, &end_, err)) {
-        if (*err) { da_free(ts); return da_empty(Tokens); }
+        if (*err) { da_free(ts); return da_empty(ASTs); }
         if (text[start_] == '(') {
             da_push(ts, token_from_tokens(parse_range(text, start_ + 1, end_ - 1, err)));
         } else {
-            da_push(ts, token_from_text(substring(text, start_, end_)));
+            da_push(ts, atom_from_text(substring(text, start_, end_)));
         }
         start_ = end_ + 1;
         end_ = end;
@@ -72,26 +72,26 @@ bool find_token(char text[], int *start, int *end, EvalError *err) {
     }
 }
 
-void print_tokens(Tokens tokens) {
-    for (int i = 0; i < tokens.count; i++) {
+void print_tokens(ASTs asts) {
+    for (int i = 0; i < asts.count; i++) {
         if (i > 0) printf(" ");
-        if (tokens.array[i].type == TT_TEXT) {
-            printf("%s", tokens.array[i].union_.text);
+        if (asts.array[i].type == AST_ATOM) {
+            printf("%s", asts.array[i].union_.atom);
         } else {
             printf("(");
-            print_tokens(*tokens.array[i].union_.array);
+            print_tokens(*asts.array[i].union_.list);
             printf(")");
         }
     }
 }
 
-Token token_from_tokens(Tokens tokens) { 
-    Tokens *new_tokens = malloc(sizeof(Tokens));
-    new_tokens->array = tokens.array;
-    new_tokens->count = tokens.count;
-    return ((Token){ .type = TT_ARRAY, .union_ = { .array = new_tokens }});
+AST token_from_tokens(ASTs asts) { 
+    ASTs *new_tokens = malloc(sizeof(ASTs));
+    new_tokens->array = asts.array;
+    new_tokens->count = asts.count;
+    return ((AST){ .type = AST_LIST, .union_ = { .list = new_tokens }});
 }
 
-Token token_from_text(char *text) { 
-    return ((Token){ .type = TT_TEXT, .union_ = { .text = text }});
+AST atom_from_text(char *text) { 
+    return ((AST){ .type = AST_ATOM, .union_ = { .atom = text }});
 }
