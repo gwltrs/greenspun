@@ -19,10 +19,10 @@ char *show_eval_error(EvalError err) {
 int compare_types(Type a, Type b) {
     if (a.tag != b.tag) return a.tag - b.tag;
     if (a.tag == TYPE_SCALAR) return a.union_.scalar - b.union_.scalar;
-    if (a.union_.composite->inner_types.count != b.union_.composite->inner_types.count)
-        return a.union_.composite->inner_types.count - b.union_.composite->inner_types.count;
-    for_i (a.union_.composite->inner_types.count) {
-        int inner = compare_types(a.union_.composite->inner_types.array[i], b.union_.composite->inner_types.array[i]);
+    if (a.union_.composite.inner_types.count != b.union_.composite.inner_types.count)
+        return a.union_.composite.inner_types.count - b.union_.composite.inner_types.count;
+    for_i (a.union_.composite.inner_types.count) {
+        int inner = compare_types(a.union_.composite.inner_types.array[i], b.union_.composite.inner_types.array[i]);
         if (inner) return inner;
     }
     return 0;
