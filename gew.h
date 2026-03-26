@@ -1,7 +1,7 @@
 #ifndef GEW_H
 #define GEW_H
 
-#include "stdbool.h"
+#include <stdbool.h>
 #include <stddef.h>
 
 // Loop macros

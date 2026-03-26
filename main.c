@@ -2,10 +2,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "types.h"
 #include "libtcc.h"
 #include "string.h"
 #include "utils.h"
 #include "read.h"
+#include "transpile.h"
 
 #define BUFFER_SIZE 4096
 
@@ -13,10 +15,14 @@ int main(int c, char** a) {
 
     char *file_text = file_read_all("example.green");
     if (!file_text) { printf("Failed to read file.\n"); return -1; };
-    EvalError err = 0;
+    CompileError err = 0;
     ASTs asts = read(file_text, &err);
-    if (err) { printf("%s\n", show_eval_error(err)); return -1; }
+    if (err) { printf("%s\n", show_compile_error(err)); return -1; }
     print_asts(asts, true); printf("\n");
+    for_each (AST, ast, asts) {
+        char *tpiled = transpile(ast, 0);
+        printf("%s\n", tpiled);
+    }
 
     return 0;
 }

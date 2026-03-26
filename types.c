@@ -1,9 +1,11 @@
 #include "types.h"
 
-char *show_eval_error(EvalError err) {
-    if (err == MISMATCHED_PARENS) return "MISMATCHED_PARENS"; 
-    if (err == MISMATCHED_QUOTES) return "MISMATCHED_QUOTES"; 
+char *show_compile_error(CompileError err) {
+    if (err == UNBALANCED_PARENS) return "UNBALANCED_PARENS"; 
+    if (err == UNBALANCED_QUOTES) return "UNBALANCED_QUOTES"; 
     if (err == UNEXPECTED_END_OF_STRING) return "UNEXPECTED_END_OF_STRING"; 
+    if (err == INVALID_NAMING) return "INVALID_NAMING";
+    if (err == INVALID_INT_LITERAL) return "INVALID_INT_LITERAL";
     /*
     if (err == EVAL_SYMBOL_UNKNOWN) return "EVAL_SYMBOL_UNKNOWN"; 
     if (err == EVAL_ARGS_TOO_FEW) return "EVAL_ARGS_TOO_FEW"; 
@@ -16,6 +18,7 @@ char *show_eval_error(EvalError err) {
     return "";
 }
 
+/*
 int compare_types(Type a, Type b) {
     if (a.tag != b.tag) return a.tag - b.tag;
     if (a.tag == TYPE_SCALAR) return a.union_.scalar - b.union_.scalar;
@@ -27,4 +30,12 @@ int compare_types(Type a, Type b) {
     }
     return 0;
 }
+*/
 
+Class class(AST ast, CompileError *err) {
+    if (ast.tag == AST_ATOM) {
+
+    } else {
+
+    }
+}

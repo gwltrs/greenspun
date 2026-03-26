@@ -4,9 +4,11 @@
 #include "gew.h"
 
 typedef enum {
-    MISMATCHED_PARENS = 1,
-    MISMATCHED_QUOTES,
+    UNBALANCED_PARENS = 1,
+    UNBALANCED_QUOTES,
     UNEXPECTED_END_OF_STRING,
+    INVALID_NAMING,
+    INVALID_INT_LITERAL,
     /*
     EVAL_SYMBOL_UNKNOWN,
     EVAL_ARGS_TOO_FEW,
@@ -16,25 +18,30 @@ typedef enum {
     EVAL_NUM_BAD_VALUE,
     EVAL_APPLY_ON_NON_FUNC,
     */
-} EvalError;
+} CompileError;
 
-typedef struct Type Type;
-typedef struct Types Types;
+typedef struct AST AST;
 
-typedef struct ASTs ASTs;
+da_new_type(ASTs, AST);
+
 typedef enum ASTTag { AST_ATOM, AST_LIST } ASTTag;
-typedef union ASTUnion { char *atom; ASTs *list; } ASTUnion;
-typedef struct AST { ASTTag type; ASTUnion union_; } AST;
-typedef struct ASTs { AST *array; int count; int capacity; } ASTs;
+typedef union ASTUnion { char *atom; ASTs list; } ASTUnion;
+typedef struct AST { ASTTag tag; ASTUnion union_; } AST;
 
-da_new_type(Types, Type);
+typedef struct TypedAST { AST type; AST ast; } TypedAST;
 
-typedef enum ScalarType { SCALAR_TYPE_BOOL = 1, SCALAR_TYPE_I32, SCALAR_TYPE_F32 } ScalarType;
-typedef struct CompositeType { char *name; Types inner_types; } CompositeType;
+typedef enum Class { CLASS_ID = 1, CLASS_TYPE } Class;
 
-typedef enum TypeTag { TYPE_SCALAR = 1, TYPE_COMPOSITIE } TypeTag;
-typedef union TypeUnion { ScalarType scalar; CompositeType composite; } TypeUnion;
-typedef struct Type { TypeTag tag; TypeUnion union_; } Type;
+// typedef struct ASTs { AST *array; int count; int capacity; } ASTs;
+
+// da_new_type(Types, Type);
+
+// typedef enum ScalarType { SCALAR_TYPE_BOOL = 1, SCALAR_TYPE_I32, SCALAR_TYPE_F32 } ScalarType;
+// typedef struct CompositeType { char *name; Types inner_types; } CompositeType;
+
+// typedef enum TypeTag { TYPE_SCALAR = 1, TYPE_COMPOSITIE } TypeTag;
+// typedef union TypeUnion { ScalarType scalar; CompositeType composite; } TypeUnion;
+// typedef struct Type { TypeTag tag; TypeUnion union_; } Type;
 
 // typedef struct Prop { Type type; char *name; } Prop;
 // da_new_type(Props, Prop);
@@ -42,7 +49,8 @@ typedef struct Type { TypeTag tag; TypeUnion union_; } Type;
 // typedef struct Union { Props props; } Union;
 // typedef struct Ptr { Type inner; } Ptr;
 
-char *show_eval_error(EvalError err);
-int compare_types(Type a, Type b);
+Class class(AST ast, CompileError *err);
+char *show_compile_error(CompileError err);
+// int compare_types(Type a, Type b);
 
 #endif
