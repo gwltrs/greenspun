@@ -9,7 +9,7 @@ bool is_valid_type(char *text);
 bool is_valid_identifier(char *text);
 bool is_bool_literal(AST ast, TypedAST *typed_ast, CompileError *err);
 bool is_int64_literal(AST ast, TypedAST *typed_ast, CompileError *err);
-TypedAST type_check(AST ast, CompileError *err);
+TypedAST type_check(AST ast, VarEnv var_env, CompileError *err);
 char *transpile(AST ast, int depth);
 
 #endif

@@ -15,7 +15,7 @@ bool is_valid_identifier(char *text) {
 
 bool is_bool_literal(AST ast, TypedAST *typed_ast, CompileError *err) {
     if (ast.tag == AST_LIST) return false;
-    if (ast.union_.atom != "true" && ast.union_.atom != "false") return false;
+    if (!strcmp(ast.union_.atom, "true") && !strcmp(ast.union_.atom, "true")) return false;
     *typed_ast = (TypedAST){ .type = atom("Bool"), .ast = ast };
     return true;
 }
@@ -34,14 +34,18 @@ bool is_int64_literal(AST ast, TypedAST *typed_ast, CompileError *err) {
     return true;
 }
 
-TypedAST type_check(AST ast, CompileError *err) {
+TypedAST type_check(AST ast, VarEnv var_env, CompileError *err) {
+    TypedAST typed_ast;
+    if (is_bool_literal(ast, &typed_ast, err)) return typed_ast;
+    if (is_int64_literal(ast, &typed_ast, err)) return typed_ast;
+    if (*err) return (TypedAST){};
+
     if (ast.tag == AST_ATOM) {
 
     } else {
 
     }
 }
-
 
 char *transpile(AST ast, int depth) {
 

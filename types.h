@@ -21,6 +21,8 @@ typedef enum {
 } CompileError;
 
 typedef struct AST AST;
+typedef struct FunEnv FunEnv;
+typedef struct VarEnv VarEnv;
 
 da_new_type(ASTs, AST);
 
@@ -31,6 +33,15 @@ typedef struct AST { ASTTag tag; ASTUnion union_; } AST;
 typedef struct TypedAST { AST type; AST ast; } TypedAST;
 
 typedef enum Class { CLASS_ID = 1, CLASS_TYPE } Class;
+
+typedef struct VarEnv { char *symbol; AST type; VarEnv *next; } VarEnv;
+
+typedef struct FunEnvOverload { AST type; } FunEnvOverload;
+da_new_type(FunEnvOverloads, FunEnvOverload);
+
+typedef struct FunEnv { char *symbol; FunEnvOverloads overloads; } FunEnv;
+
+// { char *symbol; Value value; bool is_system; struct EnvNode *next; }
 
 // typedef struct ASTs { AST *array; int count; int capacity; } ASTs;
 
