@@ -12,6 +12,34 @@ data Fun = Fun { funName :: String, funType :: Sexp, funBody :: [Sexp] } derivin
 data Var = Var { varName :: String, varType :: Sexp, varBody :: Sexp } deriving Show
 data Env = Env { vars :: Set Var, funs :: Set Fun }
 
+-- isTypeSymbol :: String -> Maybe Bool
+-- isTypeSymbol "" = Nothing
+-- isTypeSymbol (c:cs) = 
+--     if not $ isUpper c then Just False else
+--     if all isUpper cs then Just True else
+--     if (all isAlphaNum cs) && (any (isLower ||| isNum) cs) then Just True else Nothing
+
+-- isConcreteTypeSymbol :: String -> Maybe Bool
+-- isConcreteTypeSymbol "" = Nothing
+-- isConcreteTypeSymbol (c:cs) = 
+--     if not $ isUpper c then Just False else
+--     if (all isAlphaNum cs) && (any (isLower ||| isNum) cs) then Just True else Nothing
+
+-- isGenericTypeSymbol :: String -> Maybe Bool
+-- isGenericTypeSymbol "" = Nothing
+-- isGenericTypeSymbol (c:cs) = 
+--     if not $ isUpper c then Just False else
+--     if all isUpper cs then Just True else Nothing
+
+-- isValidVariableSymbol :: String -> Nothing Bool
+-- isValidVariableSymbol "" = Nothing
+-- isValidVariableSymbol (c:cs) = ((c == '_' || isLower c)) && all (isAlphaNum ||| (== '_')) cs
+
+-- isConcreteTypeSexp :: Sexp -> Maybe Bool
+-- isConcreteTypeSexp (List []) = Nothing
+-- isConcreteTypeSexp (Atom a) = isConcreteTypeSymbol a
+-- isConcreteTypeSexp (List l) = Just False
+
 flatSymbols :: Sexp -> Maybe [String]
 flatSymbols (List l) = mapM (\case (List l') -> Nothing; (Atom s') -> Just s') l
 flatSymbols (Atom s) = Just [s]
@@ -46,7 +74,7 @@ parseVar (List ((Atom "var") : sexps)) =
 parseVar _ = Just []
 
 -- var (List [Atom "var", type_, Atom name]) = var $ List [Atom "var", type_, Atom name, List [Atom "default"]]
--- var (List [Atom "var", type_, Atom name, body]) = 
+-- var (List [Atom "var", type_, Atom name, body])
 -- Nothing
 
 globalEnv :: [Sexp] -> Env

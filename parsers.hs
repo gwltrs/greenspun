@@ -2,9 +2,9 @@ module Parsers where
 
 import Control.Applicative
 import Control.Monad
-import Data.Char
 import Data.Bool
 import Data.Tuple
+import Utils
 
 newtype Parser a = Parser { runParser :: String -> Maybe (String, a) }
 
@@ -51,7 +51,7 @@ manySepBy :: Parser a -> Parser b -> Parser [b]
 manySepBy s p = liftA2 (:) p (many (s *> p)) <|> pure []
 
 symbol :: Parser String
-symbol = whileNE (\c -> ord c >= 33 && ord c <= 126 && ord c /= 40 && ord c /= 41)
+symbol = whileNE (\c -> isVisible c && c /= '(' && c /= ')')
  
 while :: (Char -> Bool) -> Parser String
 while f = Parser $ Just . swap . span f
@@ -60,7 +60,7 @@ whileNE :: (Char -> Bool) -> Parser String
 whileNE = notEmpty . while
 
 ws :: Parser String
-ws = while (\c -> ord c == 9 || ord c == 10 || ord c == 13 || ord c == 32)
+ws = while isWhitespace
 
 wsNE :: Parser String
 wsNE = notEmpty ws
