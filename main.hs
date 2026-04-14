@@ -6,39 +6,28 @@ import Data.List
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Utils
+import System.IO
+import Data.Functor (void)
 
 data CompileError = SyntaxError | MismatchError
-data Fun = Fun { funName :: String, funType :: Sexp, funBody :: [Sexp] } deriving Show
-data Var = Var { varName :: String, varType :: Sexp, varBody :: Sexp } deriving Show
-data Env = Env { vars :: Set Var, funs :: Set Fun }
 
--- isTypeSymbol :: String -> Maybe Bool
--- isTypeSymbol "" = Nothing
--- isTypeSymbol (c:cs) = 
---     if not $ isUpper c then Just False else
---     if all isUpper cs then Just True else
---     if (all isAlphaNum cs) && (any (isLower ||| isNum) cs) then Just True else Nothing
+data VarDec = VarDec { varName :: String, varType :: Sexp } deriving Show
 
--- isConcreteTypeSymbol :: String -> Maybe Bool
--- isConcreteTypeSymbol "" = Nothing
--- isConcreteTypeSymbol (c:cs) = 
---     if not $ isUpper c then Just False else
---     if (all isAlphaNum cs) && (any (isLower ||| isNum) cs) then Just True else Nothing
+instance Eq VarDec where
+    a == b = (varName a) == (varName b)
 
--- isGenericTypeSymbol :: String -> Maybe Bool
--- isGenericTypeSymbol "" = Nothing
--- isGenericTypeSymbol (c:cs) = 
---     if not $ isUpper c then Just False else
---     if all isUpper cs then Just True else Nothing
+instance Ord VarDec where
+    compare a b = compare (varName a) (varName b)
 
--- isValidVariableSymbol :: String -> Nothing Bool
--- isValidVariableSymbol "" = Nothing
--- isValidVariableSymbol (c:cs) = ((c == '_' || isLower c)) && all (isAlphaNum ||| (== '_')) cs
+data FunDec = FunDec { funName :: String, funType :: Sexp } deriving Show
 
--- isConcreteTypeSexp :: Sexp -> Maybe Bool
--- isConcreteTypeSexp (List []) = Nothing
--- isConcreteTypeSexp (Atom a) = isConcreteTypeSymbol a
--- isConcreteTypeSexp (List l) = Just False
+instance Eq FunDec where
+    a == b = (funName a) == (funName b) && (funType a) == (funType b)
+
+instance Ord FunDec where
+    compare a b = compare (funName a) (funName b)
+
+data Env = Env { varDecs :: Set VarDec, funDecs :: Set FunDec }
 
 flatSymbols :: Sexp -> Maybe [String]
 flatSymbols (List l) = mapM (\case (List l') -> Nothing; (Atom s') -> Just s') l
@@ -54,37 +43,29 @@ fsts l = (!! 0) <$> chunk 2 l
 snds :: [a] -> [a]
 snds l = (!! 1) <$> chunk 2 l
 
-parseFun :: Sexp -> Maybe Fun
-parseFun (Atom _) = Nothing
-parseFun (List ((Atom "fun") : (Atom name): (List args: body))) = parseFun $ List ([Atom "fun", Atom "Void", Atom name, List args] <> body)
-parseFun (List ((Atom "fun") : (returnType : ((Atom name): (List args: body)))))
-    | null body && returnType /= Atom "Void" = Nothing
+parseFunDec :: Sexp -> Maybe FunDec
+parseFunDec (Atom _) = Nothing
+parseFunDec (List ((Atom "fun") : (Atom name): (List args: _))) = parseFunDec $ List ([Atom "fun", Atom "Void", Atom name, List args])
+parseFunDec (List ((Atom "fun") : (returnType : ((Atom name): (List args: _)))))
     | odd $ length args = Nothing
     | any (\case (List _) -> True; (Atom _) -> False) $ snds args = Nothing
-    | otherwise = Just $ Fun { funName = name, funType = List ([Atom "Fun", returnType] <> fsts args), funBody = body }
-parseFun _ = Nothing
+    | otherwise = Just $ FunDec { funName = name, funType = List ([Atom "Fun", returnType] <> fsts args) }
+parseFunDec _ = Nothing
 
-parseVar :: Sexp -> Maybe [Var]
-parseVar (Atom _) = Just []
-parseVar (List ((Atom "var") : sexps)) = 
+parseVarDec :: Sexp -> Maybe [VarDec]
+parseVarDec (Atom _) = Just []
+parseVarDec (List ((Atom "var") : sexps)) = 
     let len = length sexps; names = fromMaybe [] $ flatSymbols (sexps !! 1) in
     if len < 2 || len > 3 || null names then Nothing else
     let body = fromMaybe (List [Atom "default"]) (sexps !? 2) in
-    Just ((\n -> Var { varName = n, varType = head sexps, varBody = body }) <$> names)
-parseVar _ = Just []
+    Just ((\n -> VarDec { varName = n, varType = head sexps }) <$> names)
+parseVarDec _ = Just []
 
--- var (List [Atom "var", type_, Atom name]) = var $ List [Atom "var", type_, Atom name, List [Atom "default"]]
--- var (List [Atom "var", type_, Atom name, body])
--- Nothing
-
-globalEnv :: [Sexp] -> Env
+globalEnv :: [Sexp] -> Maybe Env
 globalEnv = undefined
 
-funSig :: Sexp -> Maybe Sexp
-funSig = undefined
-
-varSig :: Sexp -> Maybe Sexp
-varSig = undefined
-
 main :: IO ()
-main = undefined
+main = do
+    greenFilePaths <- findRelativeGreenFilePaths ""
+    greenFileContents <- sequence (readFile <$> greenFilePaths)
+    void $ sequence (putStrLn <$> greenFileContents)

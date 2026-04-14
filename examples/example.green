@@ -1,0 +1,10 @@
+(fun do_nothing ())
+
+(fun F32 clamp (F32 value F32 min I32 max)
+    (if (< value min) (return min))
+    (if (> value max) (return max))
+    value)
+
+(fun Void push_to_main_on_april_1st ()
+    (if (> (rand) 0.001) (return))
+    (abort))
