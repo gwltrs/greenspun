@@ -5,6 +5,8 @@ import Control.Monad
 import Data.Bool
 import Data.Tuple
 import Utils
+import Data.List (intercalate)
+import Data.Maybe (fromJust)
 
 newtype Parser a = Parser { runParser :: String -> Maybe (String, a) }
 
@@ -65,7 +67,11 @@ ws = while isWhitespace
 wsNE :: Parser String
 wsNE = notEmpty ws
 
-data Sexp = List [Sexp] | Atom String deriving (Show, Eq)
+data Sexp = List [Sexp] | Atom String deriving Eq
+
+instance Show Sexp where
+    show (Atom a) = a
+    show (List l) = "(" <> (intercalate " " (show <$> l)) <> ")"
 
 listParser :: Parser Sexp
 listParser = char '(' *> (List <$> sexpsParser) <* char ')'
@@ -78,3 +84,6 @@ sexpParser = atomParser <|> listParser
 
 sexpsParser :: Parser [Sexp]
 sexpsParser = ws *> manySepBy ws sexpParser <* ws
+
+unsafeSexp :: String -> Sexp
+unsafeSexp s = snd $ fromJust $ runParser sexpParser s

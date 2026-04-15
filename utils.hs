@@ -51,6 +51,8 @@ infixr 3 &&&
 (|||) = combine (||)
 infixr 2 |||
 
+
+
 -- (&&&?) :: (a -> Maybe Bool) -> (a -> Maybe Bool) -> a -> Maybe Bool
 -- (&&&?) = combine (liftA2 (||))
 
