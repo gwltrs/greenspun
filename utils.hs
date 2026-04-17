@@ -65,3 +65,13 @@ xs !? n
     | otherwise = foldr (\x r k -> case k of
                                        0 -> Just x
                                        _ -> r (k-1)) (const Nothing) xs n
+
+chunk :: Int -> [a] -> [[a]]
+chunk _ [] = []
+chunk i xs = let (f, r) = splitAt i xs in f : chunk i r
+
+fsts :: [a] -> [a]
+fsts l = (!! 0) <$> chunk 2 l
+
+snds :: [a] -> [a]
+snds l = (!! 1) <$> chunk 2 l

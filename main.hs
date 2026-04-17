@@ -4,7 +4,7 @@ import Control.Applicative
 import Parsers
 import Data.List
 import Data.Maybe (fromMaybe)
-import Data.Set (Set, fromList, size)
+import Data.Set (Set, fromList, size, toList)
 import Utils
 import System.IO
 import Data.Functor (void, (<&>))
@@ -22,7 +22,7 @@ instance Ord VarDec where
 data FunDec = FunDec { funName :: String, funType :: Sexp } deriving Show
 
 instance Eq FunDec where
-    a == b = (funName a) == (funName b) && (funType a) == (funType b)
+    a == b = (funName a) == (funName b)
 
 instance Ord FunDec where
     compare a b = compare (funName a) (funName b)
@@ -34,23 +34,21 @@ flatNotEmptyAtoms (Atom s) = Just [s]
 flatNotEmptyAtoms (List []) = Nothing
 flatNotEmptyAtoms (List l) = mapM (\case (List _) -> Nothing; (Atom s') -> Just s') l
 
-chunk :: Int -> [a] -> [[a]]
-chunk _ [] = []
-chunk i xs = let (f, r) = splitAt i xs in f : chunk i r
-
-fsts :: [a] -> [a]
-fsts l = (!! 0) <$> chunk 2 l
-
-snds :: [a] -> [a]
-snds l = (!! 1) <$> chunk 2 l
-
 parseFunDec :: Sexp -> Maybe [FunDec]
 parseFunDec (Atom _) = Just []
-parseFunDec (List ((Atom "fun") : (Atom name): (List args: _))) = parseFunDec $ List ([Atom "fun", Atom "Void", Atom name, List args])
-parseFunDec (List ((Atom "fun") : (returnType : ((Atom name): (List args: _)))))
+parseFunDec (List ((Atom "fun") : (Atom name) : (List args) : rest))
     | odd $ length args = Nothing
-    | any (\case (List _) -> True; (Atom _) -> False) $ snds args = Nothing
-    | otherwise = Just $ [FunDec { funName = name, funType = List ([Atom "Fun", returnType] <> fsts args) }]
+    | any (\case (List _) -> True; (Atom _) -> False) $ fsts args = Nothing
+    | hasArrow && (length rest == 1) = Nothing
+    | otherwise = Just [FunDec { funName = name, funType = List ([Atom "->"] <> snds args <> [returnType]) }]
+        where
+            hasArrow = (rest !? 0) == Just (Atom "->")
+            returnType = if hasArrow then rest !! 1 else Atom "Void"
+-- parseFunDec (List ((Atom "fun") : (returnType : ((Atom name): (List args: _)))))
+--     | odd $ length args = Nothing
+--     | any (\case (List _) -> True; (Atom _) -> False) $ snds args = Nothing
+--     | otherwise = Just $ [FunDec { funName = name, funType = List ([Atom "Fun", returnType] <> fsts args) }]
+parseFunDec (List (Atom "fun" : rest)) = Nothing
 parseFunDec _ = Just []
 
 parseVarDec :: Sexp -> Maybe [VarDec]
@@ -58,19 +56,21 @@ parseVarDec (Atom _) = Just []
 parseVarDec (List ((Atom "var") : rest)) =
     let len = length rest in
     if len < 2 || len > 3 then Nothing else
-    let names = flatNotEmptyAtoms (rest !! 1) in
-    names <&> (\ns -> ns <&> (\n -> VarDec { varName = n, varType = head rest }))
+    let names = flatNotEmptyAtoms $ head rest in
+    names <&> (\ns -> ns <&> (\n -> VarDec { varName = n, varType = rest !! 1 }))
 parseVarDec _ = Just []
 
 globalEnv :: [Sexp] -> Maybe Env
 globalEnv ss = do
-    funDecsList <- concat <$> sequence (parseFunDec <$> ss)
-    varDecsList <- concat <$> sequence (parseVarDec <$> ss)
+    funDecsList <- concat <$> mapM parseFunDec ss
+    varDecsList <- concat <$> mapM parseVarDec ss
     let funDecsSet = fromList funDecsList
     let varDecsSet = fromList varDecsList
+    let nameSet = fromList ((funName <$> toList funDecsSet) <> (varName <$> toList varDecsSet))
     if 
         length funDecsList == size funDecsSet &&
-        length varDecsList == size varDecsSet
+        length varDecsList == size varDecsSet &&
+        length nameSet == length funDecsList + length varDecsList
     then
         Just $ Env { varDecs = varDecsSet, funDecs = funDecsSet }
     else

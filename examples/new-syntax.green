@@ -1,0 +1,21 @@
+(var xs [I32])
+(var (x y z) I32)
+(fun + (x Int y Int) -> Int
+     
+)
+
+(fun apply (f (-> Int* Int* Int) x Int* y Int*) -> Int
+    (return (f (* x) (* y))))
+
+(fun >>= (a A? mapper MAPPER) -> B?
+    (switch a
+        (case :yes a' A)
+            (<| return yes mapper a')
+        (case :nothing)
+            (return (nothing))))
+
+(fun flat-map (ptr A* mapper MAPPER) -> B*
+    (if (null? ptr)
+        (return (null))
+    :else
+        (<| return alloc mapper * ptr))) 
