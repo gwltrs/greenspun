@@ -18,4 +18,4 @@
     (if (null? ptr)
         (return (null))
     :else
-        (<| return alloc mapper * ptr))) 
+        (<| return alloc mapper * ptr)))

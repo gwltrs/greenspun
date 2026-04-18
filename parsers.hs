@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Parsers where
 
 import Control.Applicative
@@ -71,7 +73,7 @@ data Sexp = List [Sexp] | Atom String deriving Eq
 
 instance Show Sexp where
     show (Atom a) = a
-    show (List l) = "(" <> (intercalate " " (show <$> l)) <> ")"
+    show (List l) = "(" <> (unwords (show <$> l)) <> ")"
 
 listParser :: Parser Sexp
 listParser = char '(' *> (List <$> sexpsParser) <* char ')'
@@ -87,3 +89,11 @@ sexpsParser = ws *> manySepBy ws sexpParser <* ws
 
 unsafeSexp :: String -> Sexp
 unsafeSexp s = snd $ fromJust $ runParser sexpParser s
+
+unsafeAtom :: Sexp -> String
+unsafeAtom (Atom s) = s
+
+flatNotEmptyAtoms :: Sexp -> Maybe [String]
+flatNotEmptyAtoms (Atom s) = Just [s]
+flatNotEmptyAtoms (List []) = Nothing
+flatNotEmptyAtoms (List l) = mapM (\case (List _) -> Nothing; (Atom s') -> Just s') l

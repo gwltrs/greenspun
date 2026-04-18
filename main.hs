@@ -1,3 +1,4 @@
+-- {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE LambdaCase #-}
 
 import Control.Applicative
@@ -8,73 +9,132 @@ import Data.Set (Set, fromList, size, toList)
 import Utils
 import System.IO
 import Data.Functor (void, (<&>))
+import Environment
+import Text.Read (readMaybe)
+import Parsers (unsafeAtom)
 
-data CompileError = SyntaxError | MismatchError
+-- data CompRes
 
-data VarDec = VarDec { varName :: String, varType :: Sexp } deriving Show
+newtype CompileResult a = CompileResult (Either [CompileError] (Maybe a)) deriving Show
 
-instance Eq VarDec where
-    a == b = (varName a) == (varName b)
+instance Functor CompileResult where
+    -- fmap :: (a -> b) -> CompileResult a -> CompileResult b
+    fmap f (CompileResult (Left errs)) = CompileResult $ Left errs
+    fmap f (CompileResult (Right Nothing)) = CompileResult $ Right Nothing
+    fmap f (CompileResult (Right (Just res))) = CompileResult $ Right $ Just $ f res
 
-instance Ord VarDec where
-    compare a b = compare (varName a) (varName b)
+instance Applicative CompileResult where
+    pure a = CompileResult $ Right $ Just a
+    liftA2 f (CompileResult (Right (Just a))) (CompileResult (Right (Just b))) = CompileResult $ Right $ Just $ f a b
+    liftA2 _ (CompileResult (Left errsA)) (CompileResult (Left errsB)) = CompileResult $ Left (errsA <> errsB)
+    liftA2 _ (CompileResult (Left errs)) _ = CompileResult $ Left errs
+    liftA2 _ _ (CompileResult (Left errs)) = CompileResult $ Left errs
+    liftA2 _ _ _ = CompileResult $ Right Nothing
 
-data FunDec = FunDec { funName :: String, funType :: Sexp } deriving Show
+instance Monad CompileResult where
+    (CompileResult (Right (Just res))) >>= f = f res
+    (CompileResult (Right Nothing)) >>= _ = CompileResult $ Right Nothing
+    (CompileResult (Left errs)) >>= _ = CompileResult $ Left errs
 
-instance Eq FunDec where
-    a == b = (funName a) == (funName b)
+instance Alternative CompileResult where
+    empty = CompileResult $ Right Nothing
+    (CompileResult (Left errsA)) <|> (CompileResult (Left errsB)) = CompileResult $ Left (errsA <> errsB)
+    (CompileResult (Left errs)) <|> _ = CompileResult $ Left errs
+    _ <|> (CompileResult (Left errs)) = CompileResult $ Left errs
+    (CompileResult (Right (Just res))) <|> _ = CompileResult $ Right $ Just res
+    _ <|> (CompileResult (Right (Just res))) = CompileResult $ Right $ Just res
+    _ <|> _ = CompileResult $ Right Nothing
 
-instance Ord FunDec where
-    compare a b = compare (funName a) (funName b)
+data CompileError
+    = MismatchError
+    | MiscError
+    deriving Show
 
-data Env = Env { varDecs :: Set VarDec, funDecs :: Set FunDec } deriving Show
+data Literal
+    = BoolLiteral Bool
+    | IntLiteral Int
+    deriving Show
 
-flatNotEmptyAtoms :: Sexp -> Maybe [String]
-flatNotEmptyAtoms (Atom s) = Just [s]
-flatNotEmptyAtoms (List []) = Nothing
-flatNotEmptyAtoms (List l) = mapM (\case (List _) -> Nothing; (Atom s') -> Just s') l
+data Expression
+    = CallExpression [Expression]
+    | LiteralExpression Literal
+    | VariableExpression String
+    deriving Show
 
-parseFunDec :: Sexp -> Maybe [FunDec]
-parseFunDec (Atom _) = Just []
-parseFunDec (List ((Atom "fun") : (Atom name) : (List args) : rest))
-    | odd $ length args = Nothing
-    | any (\case (List _) -> True; (Atom _) -> False) $ fsts args = Nothing
-    | hasArrow && (length rest == 1) = Nothing
-    | otherwise = Just [FunDec { funName = name, funType = List ([Atom "->"] <> snds args <> [returnType]) }]
+data Statement
+    = FunctionStatement String [(String, Sexp)] Sexp [Statement]
+    | ReturnStatement Expression
+    | VariableStatement String Expression
+    | IfStatement [(Bool, [Statement])] (Maybe [Statement])
+    | ForStatment Statement Expression Statement [Statement]
+    deriving Show
+
+miscErr :: CompileResult a
+miscErr = CompileResult $ Left [MiscError]
+
+------------------------------------------------------
+
+parseLiteral :: Sexp -> CompileResult Literal
+parseLiteral (Atom "true") = pure $ BoolLiteral True
+parseLiteral (Atom "false") = pure $ BoolLiteral False
+parseLiteral (Atom numText) =
+    if isNum $ head numText
+    then
+        if all isNum numText
+        then pure $ IntLiteral (read numText :: Int)
+        else miscErr
+    else empty
+parseLiteral (List _) = CompileResult $ Right Nothing
+
+parseCall :: Sexp -> CompileResult [Expression]
+parseCall (Atom _) = empty
+parseCall (List []) = miscErr
+parseCall (List exprs) = mapM parseExpression exprs
+
+parseVariable :: Sexp -> CompileResult String
+parseVariable (Atom a) = pure a
+parseVariable _ = empty
+
+parseExpression :: Sexp -> CompileResult Expression
+parseExpression s = 
+    (CallExpression <$> parseCall s) 
+        <|> (LiteralExpression <$> parseLiteral s)
+        <|> (VariableExpression <$> parseVariable s)
+
+------------------------------------------------------
+
+parseFunction :: Sexp -> CompileResult (String, [(String, Sexp)], Sexp, [Statement])
+parseFunction (Atom _) = empty
+parseFunction (List ((Atom "fun") : (Atom name) : (List args) : rest))
+    | odd $ length args = miscErr
+    | any (\case (List _) -> True; (Atom _) -> False) $ fsts args = miscErr
+    | hasArrow && (length rest == 1) = miscErr
+    | otherwise = (\ss -> (name, argPairs, returnType, ss)) <$> statements
         where
+            argPairs = (\l -> (unsafeAtom $ head l, l !! 1)) <$> chunk 2 args
             hasArrow = (rest !? 0) == Just (Atom "->")
             returnType = if hasArrow then rest !! 1 else Atom "Void"
--- parseFunDec (List ((Atom "fun") : (returnType : ((Atom name): (List args: _)))))
---     | odd $ length args = Nothing
---     | any (\case (List _) -> True; (Atom _) -> False) $ snds args = Nothing
---     | otherwise = Just $ [FunDec { funName = name, funType = List ([Atom "Fun", returnType] <> fsts args) }]
-parseFunDec (List (Atom "fun" : rest)) = Nothing
-parseFunDec _ = Just []
+            statementSexps = if hasArrow then drop 2 rest else rest
+            statements = mapM parseStatement statementSexps
+parseFunction (List (Atom "fun" : rest)) = miscErr
+parseFunction _ = empty
 
-parseVarDec :: Sexp -> Maybe [VarDec]
-parseVarDec (Atom _) = Just []
-parseVarDec (List ((Atom "var") : rest)) =
-    let len = length rest in
-    if len < 2 || len > 3 then Nothing else
-    let names = flatNotEmptyAtoms $ head rest in
-    names <&> (\ns -> ns <&> (\n -> VarDec { varName = n, varType = rest !! 1 }))
-parseVarDec _ = Just []
+parseReturn :: Sexp -> CompileResult Expression
+parseReturn (List [Atom "return", expr]) = parseExpression expr
+    -- case parseExpression rest of
+    -- else compErr MiscError
+parseReturn (List (Atom "return" : expr)) = miscErr
+parseReturn _ = empty
 
-globalEnv :: [Sexp] -> Maybe Env
-globalEnv ss = do
-    funDecsList <- concat <$> mapM parseFunDec ss
-    varDecsList <- concat <$> mapM parseVarDec ss
-    let funDecsSet = fromList funDecsList
-    let varDecsSet = fromList varDecsList
-    let nameSet = fromList ((funName <$> toList funDecsSet) <> (varName <$> toList varDecsSet))
-    if 
-        length funDecsList == size funDecsSet &&
-        length varDecsList == size varDecsSet &&
-        length nameSet == length funDecsList + length varDecsList
-    then
-        Just $ Env { varDecs = varDecsSet, funDecs = funDecsSet }
-    else
-        Nothing
+unc4 :: (a -> b -> c -> d -> e) -> (a, b, c, d) -> e
+unc4 f (a, b, c, d) = f a b c d
+
+parseStatement :: Sexp -> CompileResult Statement
+parseStatement s = 
+    ((unc4 FunctionStatement) <$> parseFunction s)
+    <|> (ReturnStatement <$> parseReturn s)
+
+------------------------------------------------------
 
 filePathSexps :: FilePath -> IO (Maybe [Sexp])
 filePathSexps path = do
@@ -88,6 +148,8 @@ greenFilesSexps = do
     paths <- findRelativeGreenFilePaths ""
     sexps <- traverse filePathSexps paths
     pure $ concat <$> sequence sexps
+
+------------------------------------------------------
 
 main :: IO ()
 main = do

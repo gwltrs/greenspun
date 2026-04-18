@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Utils where
 
 import Data.Char (ord)
@@ -29,7 +31,7 @@ isWhitespace :: Char -> Bool
 isWhitespace c = let n = ord c in n == 9 || n == 10 || n == 13 || n == 32 
 
 combine :: (b -> c -> d) -> (a -> b) -> (a -> c) -> (a -> d)
-combine (?) f g  =  \x -> f x ? g x
+combine (?) f g x = f x ? g x
 
 findRelativeGreenFilePaths :: FilePath -> IO [FilePath]
 findRelativeGreenFilePaths rel = do
@@ -50,8 +52,6 @@ infixr 3 &&&
 (|||) :: (a -> Bool) -> (a -> Bool) -> a -> Bool
 (|||) = combine (||)
 infixr 2 |||
-
-
 
 -- (&&&?) :: (a -> Maybe Bool) -> (a -> Maybe Bool) -> a -> Maybe Bool
 -- (&&&?) = combine (liftA2 (||))
