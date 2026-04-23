@@ -21,6 +21,6 @@
 
 (fun fizz-buzz ()
     (for-each i (..< 1 100)
-        (if (/3? i) (print "Fizz"))
-        (if (/5? i) (print "Buzz"))
+        (if (%3? i) (print "Fizz"))
+        (if (%5? i) (print "Buzz"))
         (print "\n")))
