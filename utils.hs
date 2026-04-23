@@ -76,9 +76,6 @@ fsts l = (!! 0) <$> chunk 2 l
 snds :: [a] -> [a]
 snds l = (!! 1) <$> chunk 2 l
 
-uncurry2 :: (a -> b -> c) -> (a, b) -> c
-uncurry2 f (a, b) = f a b
-
 uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
 uncurry3 f (a, b, c) = f a b c
 

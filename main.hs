@@ -32,7 +32,7 @@ data Statement
     | ReturnStatement Expression
     | VariableStatement [String] Sexp Expression 
     | IfStatement [(Bool, [Statement])] (Maybe [Statement])
-    | ForStatment Statement Expression Statement [Statement]
+    | ForStatement (Maybe Statement) (Maybe Expression) (Maybe Statement) [Statement]
     deriving Show
 
 miscErr :: CompileResult a
@@ -85,6 +85,11 @@ parseFunction (List ((Atom "fun") : (Atom name) : (List args) : rest))
 parseFunction (List (Atom "fun" : rest)) = miscErr
 parseFunction _ = empty
 
+parseReturn :: Sexp -> CompileResult Expression
+parseReturn (List [Atom "return", expr]) = parseExpression expr
+parseReturn (List (Atom "return" : expr)) = miscErr
+parseReturn _ = empty
+
 parseVariable :: Sexp -> CompileResult ([String], Sexp, Expression)
 parseVariable (Atom _) = empty
 parseVariable (List ((Atom "var") : rest)) =
@@ -98,18 +103,19 @@ parseVariable (List ((Atom "var") : rest)) =
         (, rest !! 1, ) <$> names <*> expr
 parseVariable _ = empty
 
-parseReturn :: Sexp -> CompileResult Expression
-parseReturn (List [Atom "return", expr]) = parseExpression expr
-    -- case parseExpression rest of
-    -- else compErr MiscError
-parseReturn (List (Atom "return" : expr)) = miscErr
-parseReturn _ = empty
+parseIf :: Sexp -> CompileResult ([(Bool, [Statement])], Maybe [Statement])
+parseIf = undefined
+
+parseFor :: Sexp -> CompileResult (Maybe Statement, Maybe Expression, Maybe Statement, [Statement])
+parseFor = undefined
 
 parseStatement :: Sexp -> CompileResult Statement
 parseStatement s = 
     (uncurry4 FunctionStatement <$> parseFunction s)
     <|> (ReturnStatement <$> parseReturn s)
     <|> (uncurry3 VariableStatement <$> parseVariable s)
+    <|> (uncurry IfStatement <$> parseIf s)
+    <|> (uncurry4 ForStatement <$> parseFor s)
 
 ------------------------------------------------------
 

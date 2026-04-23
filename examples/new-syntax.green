@@ -1,8 +1,8 @@
 (var xs [I32])
 (var (x y z) I32)
 (fun + (x Int y Int) -> Int
-     
-)
+    (for (var z Int x) (> y 0) (-- y) (++ z))
+    (return z))
 
 (fun apply (f (-> Int* Int* Int) x Int* y Int*) -> Int
     (return (f (* x) (* y))))
