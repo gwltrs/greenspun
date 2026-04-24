@@ -19,3 +19,6 @@
         (return (null))
     :else
         (<| return alloc mapper * ptr)))
+
+(fun forever () 
+    (for () () ()))

@@ -15,24 +15,37 @@ import Text.Read (readMaybe)
 import Type.Parser.String 
 import Parsers.String
 import Parsers.Sexp
+import Type.CompileResult (CompileResult)
+import Distribution.Compat.Prelude (undefined)
+import Control.Applicative (Alternative(empty))
 
-data Literal
-    = BoolLiteral Bool
-    | IntLiteral Int
+data Lit
+    = BoolLit Bool
+    | IntLit Int
     deriving Show
 
-data Expression
-    = CallExpression [Expression]
-    | LiteralExpression Literal
-    | VariableExpression String
+data Expr
+    = CallExpr [Expr]
+    | LitExpr Lit
+    | VarExpr String
     deriving Show
 
-data Statement
-    = FunctionStatement String [(String, Sexp)] Sexp [Statement]
-    | ReturnStatement Expression
-    | VariableStatement [String] Sexp Expression 
-    | IfStatement [(Bool, [Statement])] (Maybe [Statement])
-    | ForStatement (Maybe Statement) (Maybe Expression) (Maybe Statement) [Statement]
+data Body
+    = FunBody String [(String, Sexp)] Sexp [Body]
+    | RetBody (Maybe Expr)
+    | VarBody [String] Sexp Expr 
+    | IfBody [(Bool, [Body])] (Maybe [Body])
+    | ForBody (Maybe Stat) (Maybe Expr) (Maybe Stat) [Body]
+    deriving Show
+
+data Stat
+    = VarStat [String] Sexp Expr 
+    | CallStat [Expr]
+    deriving Show
+
+data Top
+    = FunTop String [(String, Sexp)] Sexp [Body]
+    | VarTop [String] Sexp Expr 
     deriving Show
 
 miscErr :: CompileResult a
@@ -40,38 +53,38 @@ miscErr = CompileResult $ Left [MiscError]
 
 ------------------------------------------------------
 
-parseLiteral :: Sexp -> CompileResult Literal
-parseLiteral (Atom "true") = pure $ BoolLiteral True
-parseLiteral (Atom "false") = pure $ BoolLiteral False
-parseLiteral (Atom numText) =
+parseLit :: Sexp -> CompileResult Lit
+parseLit (Atom "true") = pure $ BoolLit True
+parseLit (Atom "false") = pure $ BoolLit False
+parseLit (Atom numText) =
     if isNum $ head numText
     then
         if all isNum numText
-        then pure $ IntLiteral (read numText :: Int)
+        then pure $ IntLit (read numText :: Int)
         else miscErr
     else empty
-parseLiteral (List _) = CompileResult $ Right Nothing
+parseLit (List _) = CompileResult $ Right Nothing
 
-parseCall :: Sexp -> CompileResult [Expression]
+parseCall :: Sexp -> CompileResult [Expr]
 parseCall (Atom _) = empty
 parseCall (List []) = miscErr
-parseCall (List exprs) = mapM parseExpression exprs
+parseCall (List exprs) = traverse parseExpr exprs
 
 parseIdentifier :: Sexp -> CompileResult String
 parseIdentifier (Atom a) = pure a
 parseIdentifier _ = empty
 
-parseExpression :: Sexp -> CompileResult Expression
-parseExpression s = 
-    (CallExpression <$> parseCall s) 
-        <|> (LiteralExpression <$> parseLiteral s)
-        <|> (VariableExpression <$> parseIdentifier s)
+parseExpr :: Sexp -> CompileResult Expr
+parseExpr s = 
+    (CallExpr <$> parseCall s) 
+        <|> (LitExpr <$> parseLit s)
+        <|> (VarExpr <$> parseIdentifier s)
 
 ------------------------------------------------------
 
-parseFunction :: Sexp -> CompileResult (String, [(String, Sexp)], Sexp, [Statement])
-parseFunction (Atom _) = empty
-parseFunction (List ((Atom "fun") : (Atom name) : (List args) : rest))
+parseFun :: Sexp -> CompileResult (String, [(String, Sexp)], Sexp, [Body])
+parseFun (Atom _) = empty
+parseFun (List ((Atom "fun") : (Atom name) : (List args) : rest))
     | odd $ length args = miscErr
     | any (\case (List _) -> True; (Atom _) -> False) $ fsts args = miscErr
     | hasArrow && (length rest == 1) = miscErr
@@ -81,41 +94,59 @@ parseFunction (List ((Atom "fun") : (Atom name) : (List args) : rest))
             hasArrow = (rest !? 0) == Just (Atom "->")
             returnType = if hasArrow then rest !! 1 else Atom "Void"
             statementSexps = if hasArrow then drop 2 rest else rest
-            statements = mapM parseStatement statementSexps
-parseFunction (List (Atom "fun" : rest)) = miscErr
-parseFunction _ = empty
+            statements = mapM parseBody statementSexps
+parseFun (List (Atom "fun" : rest)) = miscErr
+parseFun _ = empty
 
-parseReturn :: Sexp -> CompileResult Expression
-parseReturn (List [Atom "return", expr]) = parseExpression expr
-parseReturn (List (Atom "return" : expr)) = miscErr
-parseReturn _ = empty
+parseRet :: Sexp -> CompileResult (Maybe Expr)
+parseRet (List [Atom "return", expr]) = Just <$> parseExpr expr
+parseRet (List [Atom "return"]) = pure Nothing
+parseRet _ = empty
 
-parseVariable :: Sexp -> CompileResult ([String], Sexp, Expression)
-parseVariable (Atom _) = empty
-parseVariable (List ((Atom "var") : rest)) =
+parseVar :: Sexp -> CompileResult ([String], Sexp, Expr)
+parseVar (Atom _) = empty
+parseVar (List ((Atom "var") : rest)) =
     let len = length rest in
     if len < 2 || len > 3 then miscErr else
     let 
         names = elseCompileError MiscError (flatNotEmptyAtoms $ head rest)
         third = fromMaybe (List [Atom "init"]) (rest !? 2)
-        expr = parseExpression third
+        expr = parseExpr third
     in
         (, rest !! 1, ) <$> names <*> expr
-parseVariable _ = empty
+parseVar _ = empty
 
-parseIf :: Sexp -> CompileResult ([(Bool, [Statement])], Maybe [Statement])
+parseIf :: Sexp -> CompileResult ([(Bool, [Body])], Maybe [Body])
 parseIf = undefined
 
-parseFor :: Sexp -> CompileResult (Maybe Statement, Maybe Expression, Maybe Statement, [Statement])
-parseFor = undefined
+allowEmptyList :: (Sexp -> CompileResult a) -> (Sexp -> CompileResult (Maybe a))
+allowEmptyList f s = if s == List [] then pure Nothing else Just <$> f s
 
-parseStatement :: Sexp -> CompileResult Statement
-parseStatement s = 
-    (uncurry4 FunctionStatement <$> parseFunction s)
-    <|> (ReturnStatement <$> parseReturn s)
-    <|> (uncurry3 VariableStatement <$> parseVariable s)
-    <|> (uncurry IfStatement <$> parseIf s)
-    <|> (uncurry4 ForStatement <$> parseFor s)
+parseFor :: Sexp -> CompileResult (Maybe Stat, Maybe Expr, Maybe Stat, [Body])
+parseFor (Atom _) = empty
+parseFor (List (Atom "for" : rest)) = 
+    if length rest < 3 then miscErr else
+    let 
+        init = (allowEmptyList parseStat) (rest !! 0)
+        cond = (allowEmptyList parseExpr) (rest !! 1)
+        update = (allowEmptyList parseStat) (rest !! 2)
+        body = traverse parseBody (drop 3 rest)
+    in 
+        (,,,) <$> init <*> cond <*> update <*> body
+parseFor _ = empty
+
+parseBody :: Sexp -> CompileResult Body
+parseBody s = 
+    (uncurry4 FunBody <$> parseFun s)
+    <|> (RetBody <$> parseRet s)
+    <|> (uncurry3 VarBody <$> parseVar s)
+    -- <|> (uncurry IfBody <$> parseIf s)
+    <|> (uncurry4 ForBody <$> parseFor s)
+
+parseStat :: Sexp -> CompileResult Stat
+parseStat s = 
+    (uncurry3 VarStat <$> parseVar s)
+    <|> (CallStat <$> parseCall s)
 
 ------------------------------------------------------
 
