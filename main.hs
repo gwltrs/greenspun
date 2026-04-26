@@ -36,6 +36,7 @@ data Body
     | VarBody [String] Sexp Expr 
     | IfBody [(Bool, [Body])] (Maybe [Body])
     | ForBody (Maybe Stat) (Maybe Expr) (Maybe Stat) [Body]
+    | CallBody [Expr]
     deriving Show
 
 data Stat
@@ -67,7 +68,7 @@ parseLit (List _) = CompileResult $ Right Nothing
 
 parseCall :: Sexp -> CompileResult [Expr]
 parseCall (Atom _) = empty
-parseCall (List []) = miscErr
+parseCall (List []) = empty
 parseCall (List exprs) = traverse parseExpr exprs
 
 parseIdentifier :: Sexp -> CompileResult String
@@ -120,7 +121,8 @@ parseIf :: Sexp -> CompileResult ([(Bool, [Body])], Maybe [Body])
 parseIf = undefined
 
 allowEmptyList :: (Sexp -> CompileResult a) -> (Sexp -> CompileResult (Maybe a))
-allowEmptyList f s = if s == List [] then pure Nothing else Just <$> f s
+allowEmptyList _ (List []) = pure Nothing
+allowEmptyList f s = Just <$> f s
 
 parseFor :: Sexp -> CompileResult (Maybe Stat, Maybe Expr, Maybe Stat, [Body])
 parseFor (Atom _) = empty
@@ -142,6 +144,7 @@ parseBody s =
     <|> (uncurry3 VarBody <$> parseVar s)
     -- <|> (uncurry IfBody <$> parseIf s)
     <|> (uncurry4 ForBody <$> parseFor s)
+    <|> (CallBody <$> parseCall s)
 
 parseStat :: Sexp -> CompileResult Stat
 parseStat s = 
