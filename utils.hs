@@ -8,6 +8,7 @@ import Control.Monad (forM)
 import System.Directory (listDirectory, getCurrentDirectory, doesDirectoryExist)
 import System.FilePath (takeExtension, (</>))
 import Data.List (isSuffixOf)
+import Debug.Trace
 
 isLower :: Char -> Bool
 isLower c = 97 <= ord c && ord c <= 122
@@ -81,3 +82,19 @@ uncurry3 f (a, b, c) = f a b c
 
 uncurry4 :: (a -> b -> c -> d -> e) -> (a, b, c, d) -> e
 uncurry4 f (a, b, c, d) = f a b c d
+
+splitAndKeepDelim :: (a -> Bool) -> [a] -> [[a]]
+splitAndKeepDelim f l = filter (not . null) $ inner f l
+    where
+        inner _ [] = []
+        inner p xs =
+            let (chunk, rest) = break p xs
+            in case rest of
+                [] -> [chunk]
+                (d:ds) ->
+                    case inner p ds of
+                        [] -> [chunk, [d]]
+                        (r:rs) -> chunk : ((d:r) : rs)
+
+traceLabel :: Show a => String -> a -> a
+traceLabel l v = trace (l ++ ": " ++ show v) v

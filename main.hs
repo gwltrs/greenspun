@@ -15,34 +15,33 @@ import Text.Read (readMaybe)
 import Type.Parser.String 
 import Parsers.String
 import Parsers.Sexp
-import Type.CompileResult (CompileResult)
-import Distribution.Compat.Prelude (undefined)
-import Control.Applicative (Alternative(empty))
+import Type.CompileResult
+import Distribution.Simple.Utils (safeLast, safeInit)
 
 data Lit
     = BoolLit Bool
     | IntLit Int
-    deriving Show
+    deriving (Show, Eq)
 
 data Expr
     = CallExpr [Expr]
     | LitExpr Lit
     | VarExpr String
-    deriving Show
+    deriving (Show, Eq)
 
 data Body
     = FunBody String [(String, Sexp)] Sexp [Body]
     | RetBody (Maybe Expr)
     | VarBody [String] Sexp Expr 
-    | IfBody [(Bool, [Body])] (Maybe [Body])
+    | IfBody [(Expr, [Body])] (Maybe [Body])
     | ForBody (Maybe Stat) (Maybe Expr) (Maybe Stat) [Body]
     | CallBody [Expr]
-    deriving Show
+    deriving (Show, Eq)
 
 data Stat
     = VarStat [String] Sexp Expr 
     | CallStat [Expr]
-    deriving Show
+    deriving (Show, Eq)
 
 data Top
     = FunTop String [(String, Sexp)] Sexp [Body]
@@ -106,7 +105,7 @@ parseRet _ = empty
 
 parseVar :: Sexp -> CompileResult ([String], Sexp, Expr)
 parseVar (Atom _) = empty
-parseVar (List ((Atom "var") : rest)) =
+parseVar (List (Atom "var" : rest)) =
     let len = length rest in
     if len < 2 || len > 3 then miscErr else
     let 
@@ -117,8 +116,59 @@ parseVar (List ((Atom "var") : rest)) =
         (, rest !! 1, ) <$> names <*> expr
 parseVar _ = empty
 
-parseIf :: Sexp -> CompileResult ([(Bool, [Body])], Maybe [Body])
-parseIf = undefined
+parseIf :: Sexp -> CompileResult ([(Expr, [Body])], Maybe [Body])
+parseIf (Atom _) = empty
+parseIf (List [Atom "if"]) = miscErr
+parseIf (List sexps@(Atom "if" : _)) = 
+    let
+        keywords = Atom <$> ["if", ":else-if", ":else"]
+        ifSplits = splitAndKeepDelim (`elem` keywords) sexps
+    in do
+        ifChunks <- traverse parseIfChunk (traceLabel "ifSplits" ifSplits)
+        if not (validateIfChunks ifChunks) then 
+            miscErr
+        else
+            let (conds, elses) = break isElseChunk ifChunks
+            in pure (fromCondChunk <$> conds, fromElseChunk <$> safeLast elses)
+parseIf _ = empty
+
+data IfChunk
+    = If (Expr, [Body])
+    | ElseIf (Expr, [Body])
+    | Else [Body]
+    deriving (Show, Eq)
+
+isIfChunk :: IfChunk -> Bool
+isIfChunk (If _) = True
+isIfChunk _ = False
+
+isElseIfChunk :: IfChunk -> Bool
+isElseIfChunk (ElseIf _) = True
+isElseIfChunk _ = False
+
+isElseChunk :: IfChunk -> Bool
+isElseChunk (Else _) = True
+isElseChunk _ = False
+
+fromCondChunk :: IfChunk -> (Expr, [Body])
+fromCondChunk (If t) = t
+fromCondChunk (ElseIf t) = t
+
+fromElseChunk :: IfChunk -> [Body]
+fromElseChunk (Else b) = b
+
+validateIfChunks :: [IfChunk] -> Bool
+validateIfChunks ((If _) : cs) = initIsGood && lastIsGood
+    where 
+        initIsGood = all isElseIfChunk (safeInit cs)
+        lastIsGood = ((not . isIfChunk) <$> safeLast cs) /= Just False
+validateIfChunks _ = False
+
+parseIfChunk :: [Sexp] -> CompileResult IfChunk
+parseIfChunk (Atom "if" : (s : ss)) = If <$> liftA2 (,) (parseExpr s) (traverse parseBody ss)
+parseIfChunk (Atom ":else-if" : (s : ss)) = ElseIf <$> liftA2 (,) (parseExpr s) (traverse parseBody ss)
+parseIfChunk (Atom ":else" : rest) = Else <$> traverse parseBody rest
+parseIfChunk _ = miscErr
 
 allowEmptyList :: (Sexp -> CompileResult a) -> (Sexp -> CompileResult (Maybe a))
 allowEmptyList _ (List []) = pure Nothing
