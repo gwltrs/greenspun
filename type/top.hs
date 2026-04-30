@@ -16,18 +16,18 @@ data Expr
 data Body
     = FunBody String [(String, Sexp)] Sexp [Body]
     | RetBody (Maybe Expr)
-    | VarBody [String] Sexp Expr 
+    | VarBody [String] Sexp [Maybe Expr]
     | IfBody [(Expr, [Body])] (Maybe [Body])
     | ForBody (Maybe Stat) (Maybe Expr) (Maybe Stat) [Body]
     | CallBody [Expr]
     deriving (Show, Eq)
 
 data Stat
-    = VarStat [String] Sexp Expr 
+    = VarStat [String] Sexp [Maybe Expr]
     | CallStat [Expr]
     deriving (Show, Eq)
 
 data Top
     = FunTop String [(String, Sexp)] Sexp [Body]
-    | VarTop [String] Sexp Expr 
+    | VarTop [String] Sexp [Maybe Expr] 
     deriving Show

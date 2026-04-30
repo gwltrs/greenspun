@@ -6,7 +6,7 @@ import Type.CompileResult
 import Type.Top
 import Type.Sexp
 import Type.Env
-import Data.Set hiding (drop, empty)
+import Data.Set hiding (drop, empty, null)
 import Utils
 import Data.Functor
 import Control.Applicative
@@ -54,6 +54,10 @@ globalEnv ss = do
         Just $ Env { varDecs = varDecsSet, funDecs = funDecsSet }
     else
         Nothing
+
+parseTop :: Sexp -> CompileResult Top
+parseTop s = (uncurry4 FunTop <$> parseFun s)
+    <|> (uncurry3 VarTop <$> parseVar s)
 
 miscErr :: CompileResult a
 miscErr = CompileResult $ Left [MiscError]
@@ -106,17 +110,26 @@ parseRet (List [Atom "return", expr]) = Just <$> parseExpr expr
 parseRet (List [Atom "return"]) = pure Nothing
 parseRet _ = empty
 
-parseVar :: Sexp -> CompileResult ([String], Sexp, Expr)
+parseVar :: Sexp -> CompileResult ([String], Sexp, [Maybe Expr])
 parseVar (Atom _) = empty
 parseVar (List (Atom "var" : rest)) =
-    let len = length rest in
-    if len < 2 || len > 3 then miscErr else
     let 
-        names = elseCompileError MiscError (flatNotEmptyAtoms $ head rest)
-        third = fromMaybe (List [Atom "init"]) (rest !? 2)
-        expr = parseExpr third
-    in
-        (, rest !! 1, ) <$> names <*> expr
+        finalizeExprs :: Int -> [Maybe Expr] -> CompileResult [Maybe Expr]
+        finalizeExprs namesLen valueExprs_ =
+            let valLen = length valueExprs_ in
+            if valLen == 0 then
+                pure $ replicate namesLen (Just $ CallExpr [VarExpr "init"])
+            else if valLen == namesLen then
+                pure valueExprs_
+            else if valLen == 1 then
+                pure $ replicate namesLen (head valueExprs_)
+            else
+                miscErr
+    in do
+        (names :: [String]) <- elseCompileError MiscError (flatNotEmptyAtoms $ head rest)
+        (valueExprs :: [Maybe Expr]) <- traverse (allowNothing (== Atom "_") parseExpr) (drop 2 rest)
+        (valueExprs2 :: [Maybe Expr]) <- finalizeExprs (length names) valueExprs
+        pure (names, rest !! 1, valueExprs2)
 parseVar _ = empty
 
 parseIf :: Sexp -> CompileResult ([(Expr, [Body])], Maybe [Body])
@@ -173,18 +186,19 @@ parseIfChunk (Atom ":else-if" : (s : ss)) = ElseIf <$> liftA2 (,) (parseExpr s) 
 parseIfChunk (Atom ":else" : rest) = Else <$> traverse parseBody rest
 parseIfChunk _ = miscErr
 
-allowEmptyList :: (Sexp -> CompileResult a) -> (Sexp -> CompileResult (Maybe a))
-allowEmptyList _ (List []) = pure Nothing
-allowEmptyList f s = Just <$> f s
+allowNothing :: (Sexp -> Bool) -> (Sexp -> CompileResult a) -> (Sexp -> CompileResult (Maybe a))
+allowNothing isNothing parser sexp = if isNothing sexp then pure Nothing else Just <$> parser sexp
+-- pure Nothing
+-- allowNothing f s = Just <$> f s
 
 parseFor :: Sexp -> CompileResult (Maybe Stat, Maybe Expr, Maybe Stat, [Body])
 parseFor (Atom _) = empty
 parseFor (List (Atom "for" : rest)) = 
     if length rest < 3 then miscErr else
     let 
-        init = (allowEmptyList parseStat) (rest !! 0)
-        cond = (allowEmptyList parseExpr) (rest !! 1)
-        update = (allowEmptyList parseStat) (rest !! 2)
+        init = (allowNothing (== List []) parseStat) (rest !! 0)
+        cond = (allowNothing (== List []) parseExpr) (rest !! 1)
+        update = (allowNothing (== List []) parseStat) (rest !! 2)
         body = traverse parseBody (drop 3 rest)
     in 
         (,,,) <$> init <*> cond <*> update <*> body
