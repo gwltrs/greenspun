@@ -40,3 +40,6 @@ data CompileError
 elseCompileError :: CompileError -> Maybe a -> CompileResult a
 elseCompileError _ (Just a) = pure a
 elseCompileError err _ = CompileResult $ Left [err]
+
+fromCompileSuccess :: CompileResult a -> a
+fromCompileSuccess (CompileResult (Right (Just a))) = a

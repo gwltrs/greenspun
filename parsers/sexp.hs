@@ -66,9 +66,9 @@ parseLit :: Sexp -> CompileResult Lit
 parseLit (Atom "true") = pure $ BoolLit True
 parseLit (Atom "false") = pure $ BoolLit False
 parseLit (Atom numText) =
-    if isNum $ head numText
+    if (isNum ||| (== '-')) $ head numText
     then
-        if all isNum numText
+        if all isNum (drop 1 numText)
         then pure $ IntLit (read numText :: Int)
         else miscErr
     else empty
