@@ -52,8 +52,15 @@ transpileLit (IntLit i) = show i
 transpileLit (BoolLit True) = "true"
 transpileLit (BoolLit False) = "false"
 
+transpileCall :: [Expr] -> String
+transpileCall (fun : args) = transpileExpr fun ++ "(" ++ (intercalate ", " $ transpileExpr <$> args) ++ ")"
+
+transpileStat :: Stat -> String
+transpileStat (VarStat names type_ values) = transpileVar (names, type_, values)
+transpileStat (CallStat exprs) = transpileCall exprs
+
 transpileExpr :: Expr -> String
-transpileExpr (CallExpr (fun : args)) = transpileExpr fun ++ "(" ++ (intercalate ", " $ transpileExpr <$> args) ++ ")"
+transpileExpr (CallExpr sexps) = transpileCall sexps
 transpileExpr (LitExpr l) = transpileLit l
 transpileExpr (VarExpr v) = mangleString v
 
@@ -71,6 +78,72 @@ transpileVar (names, type_, values) =
     in
         strippedType ++ " " ++ (intercalate ", " (mapRow <$> zipped))
 
+transpileFun :: (String, [(String, Sexp)], Sexp, [Body]) -> String
+transpileFun (name, args, returnType, body) = transpileType returnType
+    ++ " " 
+    ++ mangleString name 
+    ++ " ("
+    ++ (intercalate ", " $ transpileArg <$> args)
+    ++ ") { " 
+    ++ transpileBodies body
+    ++ " }"
+        where
+            transpileArg :: (String, Sexp) -> String
+            transpileArg (argName, argType) = transpileType argType ++ " " ++ mangleString argName
+
+transpileBodies :: [Body] -> String
+transpileBodies bs = foldMap (++ ";") $ transpileBody <$> bs
+
+transpileFor :: ((Maybe Stat), (Maybe Expr), (Maybe Stat), [Body]) -> String
+transpileFor (init, cond, update, body) = 
+    let
+        init' = fromMaybe "" (transpileStat <$> init)
+        cond' = fromMaybe "" (transpileExpr <$> cond)
+        update' = fromMaybe "" (transpileStat <$> update)
+    in
+        "for ("
+            ++ init'
+            ++ ";" 
+            ++ cond' 
+            ++ ";"
+            ++ update'
+            ++ ") { " 
+            ++ transpileBodies body
+            ++ "}" 
+
+transpileIf :: ([(Expr, [Body])], (Maybe [Body])) -> String
+transpileIf ((if_ : elseIfs), else_) =
+    let 
+        transpileIf :: (Expr, [Body]) -> String
+        transpileIf (expr, body) = "if (" ++ transpileExpr expr ++ ") { " ++ transpileBodies body ++ " } "
+        transpileElseIf :: (Expr, [Body]) -> String
+        transpileElseIf (expr, body) = "else if (" ++ transpileExpr expr ++ ") { " ++ transpileBodies body ++ " } "
+        transpileElse :: [Body] -> String
+        transpileElse b = "else { " ++ transpileBodies b ++ " }"
+    in
+        transpileIf if_
+            ++ (concat $ transpileElseIf <$> elseIfs) 
+            ++ (fromMaybe "" $ transpileElse <$> else_)
+
+{-
+data Body
+    = FunBody String [(String, Sexp)] Sexp [Body]
+    | RetBody (Maybe Expr)
+    | VarBody [String] Sexp [Maybe Expr]
+    | IfBody [(Expr, [Body])] (Maybe [Body])
+    | ForBody (Maybe Stat) (Maybe Expr) (Maybe Stat) [Body]
+    | CallBody [Expr]
+    deriving (Show, Eq)
+-}
+
+transpileBody :: Body -> String
+transpileBody (FunBody name args returnType body) = transpileFun (name, args, returnType, body)
+transpileBody (RetBody Nothing) = "return"
+transpileBody (RetBody (Just expr)) = "return " ++ transpileExpr expr
+transpileBody (VarBody names type_ values) = transpileVar (names, type_, values)
+transpileBody (IfBody conds else_) = transpileIf (conds, else_)
+transpileBody (ForBody init cond update body) = transpileFor (init, cond, update, body)
+transpileBody (CallBody exprs) = transpileCall exprs
 
 tabs :: Int -> String
 tabs i = replicate i '\t'
