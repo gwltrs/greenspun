@@ -1,11 +1,17 @@
 (var xs [I32])
-(var (x y z) I32)
+(var (x y z) I32 ())
+
 (fun + (x Int y Int) -> Int
-    (for (var z Int x) (> y 0) (-- y) (++ z))
+    (for (var z Int x) (> y 0) (dec y) (inc z))
     (return z))
 
-(fun apply (f (-> Int* Int* Int) x Int* y Int*) -> Int
-    (return (f (* x) (* y))))
+(fun apply (
+    f (-> (* I32) (* I32) I32) 
+    x (* I32) 
+    y (* I32)
+) -> I32
+    (return (f (* x) (* y)))
+)
 
 (fun >>= (a A? mapper MAPPER) -> B?
     (switch a

@@ -43,9 +43,9 @@ transpileType (Atom "F32") = "float"
 transpileType (Atom t) = t
 transpileType (List [Atom "*", inner]) = transpileType inner ++ "*"
 
-transpileTop :: Int -> Top -> String
-transpileTop i (FunTop _ _ _ _) = tabs i ++ "void asdf() {}"
-transpileTop i (VarTop _ _ _) = tabs i ++ "int x = 0"
+transpileTop :: Top -> String
+transpileTop (FunTop _ _ _ _) = "void asdf() {}"
+transpileTop (VarTop _ _ _) = "int x = 0"
 
 transpileLit :: Lit -> String
 transpileLit (IntLit i) = show i
@@ -125,17 +125,6 @@ transpileIf ((if_ : elseIfs), else_) =
             ++ (concat $ transpileElseIf <$> elseIfs) 
             ++ (fromMaybe "" $ transpileElse <$> else_)
 
-{-
-data Body
-    = FunBody String [(String, Sexp)] Sexp [Body]
-    | RetBody (Maybe Expr)
-    | VarBody [String] Sexp [Maybe Expr]
-    | IfBody [(Expr, [Body])] (Maybe [Body])
-    | ForBody (Maybe Stat) (Maybe Expr) (Maybe Stat) [Body]
-    | CallBody [Expr]
-    deriving (Show, Eq)
--}
-
 transpileBody :: Body -> String
 transpileBody (FunBody name args returnType body) = transpileFun (name, args, returnType, body)
 transpileBody (RetBody Nothing) = "return"
@@ -176,9 +165,9 @@ main :: IO ()
 main = do
     sexpsM <- greenFilesSexps
     case sexpsM of
-        Nothing -> putStrLn "Compilation Error"
+        Nothing -> putStrLn "Compilation Error 1"
         Just sexps ->
             case sequence (parseTop <$> sexps) of
                 CompileResult (Right (Just tops)) -> 
-                    putStrLn $ unlines $ transpileTop 0 <$> tops
-                _ -> putStrLn "Compilation Error"
+                    putStrLn $ unlines $ transpileTop <$> tops
+                CompileResult (Left errs) -> putStrLn ("Errors: " ++ show errs)

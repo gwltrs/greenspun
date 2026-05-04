@@ -39,11 +39,3 @@ instance Alternative StringParser where
     (Parser p1) <|> (Parser p2) = Parser $ \i -> p1 i <|> p2 i
 
 instance MonadPlus StringParser where
-
-
-
-
-
-
-
-

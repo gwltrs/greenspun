@@ -34,6 +34,16 @@ instance Alternative CompileResult where
 
 data CompileError
     = MismatchError
+    | InvalidIntegerLiteralError
+    | InvalidVarNamesError
+    | ParamSexpsArentEvenError
+    | ParamNameCantBeAListError
+    | DanglingArrowInFunError
+    | FoundFunButNoNameAtomAndParamsListError
+    | InvalidNumberOfVarValuesError
+    | EmptyIfStatementError
+    | IfStatementIncorrectKeywordSequenceError
+    | ForLoopTooFewSexpsError
     | MiscError
     deriving Show
 
@@ -43,3 +53,6 @@ elseCompileError err _ = CompileResult $ Left [err]
 
 fromCompileSuccess :: CompileResult a -> a
 fromCompileSuccess (CompileResult (Right (Just a))) = a
+
+failCompile :: CompileError -> CompileResult a
+failCompile = CompileResult . Left . pure
