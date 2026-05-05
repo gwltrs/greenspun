@@ -1,6 +1,7 @@
 module Type.CompileResult where
 
 import Control.Applicative
+import Utils
 
 newtype CompileResult a = CompileResult (Either [CompileError] (Maybe a)) deriving Show
 
@@ -53,6 +54,7 @@ elseCompileError err _ = CompileResult $ Left [err]
 
 fromCompileSuccess :: CompileResult a -> a
 fromCompileSuccess (CompileResult (Right (Just a))) = a
+fromCompileSuccess _ = nonEx "fromCompileSuccess"
 
 failCompile :: CompileError -> CompileResult a
 failCompile = CompileResult . Left . pure

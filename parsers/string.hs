@@ -26,7 +26,10 @@ manySepBy :: StringParser a -> StringParser b -> StringParser [b]
 manySepBy s p = liftA2 (:) p (many (s *> p)) <|> pure []
 
 symbol :: StringParser String
-symbol = whileNE (\c -> isVisible c && c /= '(' && c /= ')')
+symbol = strLit <|> nonWS
+    where
+        strLit = (\s -> "\"" ++ s ++ "\"") <$> (char '"' *> whileNE (/= '"') <* char '"')
+        nonWS = whileNE (\c -> isVisible c && c /= '(' && c /= ')')
  
 while :: (Char -> Bool) -> StringParser String
 while f = Parser $ Just . swap . span f

@@ -5,6 +5,7 @@ import Type.Sexp
 data Lit
     = BoolLit Bool
     | IntLit Int
+    | StringLit String
     deriving (Show, Eq)
 
 data Expr

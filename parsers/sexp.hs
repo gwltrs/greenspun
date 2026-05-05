@@ -62,6 +62,7 @@ parseTop s = (uncurry4 FunTop <$> parseFun s)
 parseLit :: Sexp -> CompileResult Lit
 parseLit (Atom "true") = pure $ BoolLit True
 parseLit (Atom "false") = pure $ BoolLit False
+parseLit (Atom ('"' : rest)) = pure $ StringLit $ init rest
 parseLit (Atom numText) =
     if (isNum ||| (== '-')) $ head numText
     then
@@ -166,9 +167,11 @@ isElseChunk _ = False
 fromCondChunk :: IfChunk -> (Expr, [Body])
 fromCondChunk (If t) = t
 fromCondChunk (ElseIf t) = t
+fromCondChunk _ = nonEx "fromCondChunk"
 
 fromElseChunk :: IfChunk -> [Body]
 fromElseChunk (Else b) = b
+fromElseChunk _ = nonEx "fromElseChunk"
 
 validateIfChunks :: [IfChunk] -> Bool
 validateIfChunks ((If _) : cs) = initIsGood && lastIsGood
@@ -181,6 +184,7 @@ parseIfChunk :: [Sexp] -> CompileResult IfChunk
 parseIfChunk (Atom "if" : (s : ss)) = If <$> liftA2 (,) (parseExpr s) (traverse parseBody ss)
 parseIfChunk (Atom ":else-if" : (s : ss)) = ElseIf <$> liftA2 (,) (parseExpr s) (traverse parseBody ss)
 parseIfChunk (Atom ":else" : rest) = Else <$> traverse parseBody rest
+parseIfChunk _ = nonEx "parseIfChunk"
 
 allowNil :: (Sexp -> CompileResult a) -> (Sexp -> CompileResult (Maybe a))
 allowNil parser sexp = if sexp == List [] then pure Nothing else Just <$> parser sexp

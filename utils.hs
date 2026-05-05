@@ -98,3 +98,6 @@ splitAndKeepDelim f l = filter (not . null) $ inner f l
 
 traceLabel :: Show a => String -> a -> a
 traceLabel l v = trace (l ++ ": " ++ show v) v
+
+nonEx :: String -> a
+nonEx s = error ("Runtime error due to non-exhaustive pattern matching in " ++ s)

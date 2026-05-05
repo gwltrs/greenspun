@@ -42,18 +42,21 @@ transpileType (Atom "I32") = "int"
 transpileType (Atom "F32") = "float"
 transpileType (Atom t) = t
 transpileType (List [Atom "*", inner]) = transpileType inner ++ "*"
+-- transpileType (List [Atom "->", inner]) = 
 
 transpileTop :: Top -> String
-transpileTop (FunTop _ _ _ _) = "void asdf() {}"
-transpileTop (VarTop _ _ _) = "int x = 0"
+transpileTop (FunTop name args returnType body) = transpileFun (name, args, returnType, body)
+transpileTop (VarTop names type_ values) = transpileVar (names, type_, values)
 
 transpileLit :: Lit -> String
 transpileLit (IntLit i) = show i
 transpileLit (BoolLit True) = "true"
 transpileLit (BoolLit False) = "false"
+transpileLit (StringLit s) = "\"" ++ s ++ "\""
 
 transpileCall :: [Expr] -> String
 transpileCall (fun : args) = transpileExpr fun ++ "(" ++ (intercalate ", " $ transpileExpr <$> args) ++ ")"
+transpileCall _ = nonEx "transpileCall"
 
 transpileStat :: Stat -> String
 transpileStat (VarStat names type_ values) = transpileVar (names, type_, values)
@@ -92,7 +95,7 @@ transpileFun (name, args, returnType, body) = transpileType returnType
             transpileArg (argName, argType) = transpileType argType ++ " " ++ mangleString argName
 
 transpileBodies :: [Body] -> String
-transpileBodies bs = foldMap (++ ";") $ transpileBody <$> bs
+transpileBodies bs = foldMap (++ "; ") $ transpileBody <$> bs
 
 transpileFor :: ((Maybe Stat), (Maybe Expr), (Maybe Stat), [Body]) -> String
 transpileFor (init, cond, update, body) = 
@@ -124,6 +127,7 @@ transpileIf ((if_ : elseIfs), else_) =
         transpileIf if_
             ++ (concat $ transpileElseIf <$> elseIfs) 
             ++ (fromMaybe "" $ transpileElse <$> else_)
+transpileIf _ = nonEx "transpileIf"
 
 transpileBody :: Body -> String
 transpileBody (FunBody name args returnType body) = transpileFun (name, args, returnType, body)
@@ -169,5 +173,8 @@ main = do
         Just sexps ->
             case sequence (parseTop <$> sexps) of
                 CompileResult (Right (Just tops)) -> 
-                    putStrLn $ unlines $ transpileTop <$> tops
+                    let cStr = unlines $ ((++ ";") . transpileTop) <$> tops
+                    in writeFile "output.c" cStr
+                    -- putStrLn $ 
                 CompileResult (Left errs) -> putStrLn ("Errors: " ++ show errs)
+                CompileResult _ -> nonEx "main"

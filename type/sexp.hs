@@ -2,6 +2,8 @@
 
 module Type.Sexp where
 
+import Utils
+
 data Sexp = List [Sexp] | Atom String deriving Eq
 
 instance Show Sexp where
@@ -10,6 +12,7 @@ instance Show Sexp where
 
 fromAtom :: Sexp -> String
 fromAtom (Atom s) = s
+fromAtom _ = nonEx "fromAtom"
 
 flatNotEmptyAtoms :: Sexp -> Maybe [String]
 flatNotEmptyAtoms (Atom s) = Just [s]

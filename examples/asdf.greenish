@@ -24,3 +24,25 @@
         (if (%3? i) (print "Fizz"))
         (if (%5? i) (print "Buzz"))
         (print "\n")))
+
+
+(fun >>= (a A? mapper MAPPER) -> B?
+    (switch a
+        (case :yes a' A)
+            (<| return yes mapper a')
+        (case :nothing)
+            (return (nothing))))
+
+(fun flat-map (ptr A* mapper MAPPER) -> B*
+    (if (null? ptr)
+        (return (null))
+    :else
+        (<| return alloc mapper * ptr)))
+
+(fun apply (
+    f (-> (* I32) (* I32) I32) 
+    x (* I32) 
+    y (* I32)
+) -> I32
+    (return (f (* x) (* y)))
+)
