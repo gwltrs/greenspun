@@ -1,3 +1,5 @@
+(include "stdio.h" "stdlib.h")
+
 (var xs (* I32))
 (var (x y z) (* I32) ())
 
@@ -9,5 +11,4 @@
     (for () () ()))
 
 (fun main ()
-    (printf "asdf !!")
-)
+    (printf "asdf !!"))

@@ -46,7 +46,8 @@ transpileType (List [Atom "*", inner]) = transpileType inner ++ "*"
 
 transpileTop :: Top -> String
 transpileTop (FunTop name args returnType body) = transpileFun (name, args, returnType, body)
-transpileTop (VarTop names type_ values) = transpileVar (names, type_, values)
+transpileTop (VarTop names type_ values) = transpileVar (names, type_, values) ++ ";"
+transpileTop (IncludeTop includes) = unlines $ ("#include " ++) <$> includes
 
 transpileLit :: Lit -> String
 transpileLit (IntLit i) = show i
@@ -138,6 +139,9 @@ transpileBody (IfBody conds else_) = transpileIf (conds, else_)
 transpileBody (ForBody init cond update body) = transpileFor (init, cond, update, body)
 transpileBody (CallBody exprs) = transpileCall exprs
 
+transpileAll :: [Top] -> String
+transpileAll tops = {- "#include <stdio.h>\n" ++ -} unlines $ transpileTop <$> tops
+
 tabs :: Int -> String
 tabs i = replicate i '\t'
 
@@ -173,8 +177,8 @@ main = do
         Just sexps ->
             case sequence (parseTop <$> sexps) of
                 CompileResult (Right (Just tops)) -> 
-                    let cStr = unlines $ ((++ ";") . transpileTop) <$> tops
-                    in writeFile "output.c" cStr
+                    writeFile "output.c" (transpileAll tops)
                     -- putStrLn $ 
                 CompileResult (Left errs) -> putStrLn ("Errors: " ++ show errs)
-                CompileResult _ -> nonEx "main"
+                CompileResult (Right Nothing) -> putStrLn "Failed to parse"
+                -- CompileResult _ -> nonEx "main"

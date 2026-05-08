@@ -31,4 +31,5 @@ data Stat
 data Top
     = FunTop String [(String, Sexp)] Sexp [Body]
     | VarTop [String] Sexp [Maybe Expr] 
+    | IncludeTop [String]
     deriving Show

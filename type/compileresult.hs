@@ -45,6 +45,8 @@ data CompileError
     | EmptyIfStatementError
     | IfStatementIncorrectKeywordSequenceError
     | ForLoopTooFewSexpsError
+    | IncludesEmptyError
+    | IncludeInvalidError
     | MiscError
     deriving Show
 

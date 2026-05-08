@@ -6,12 +6,14 @@ import Type.CompileResult
 import Type.Top
 import Type.Sexp
 import Type.Env
-import Data.Set hiding (drop, empty, null)
+import Data.Set hiding (drop, empty, null, filter)
 import Utils
 import Data.Functor
 import Control.Applicative
 import Distribution.Simple.Utils (safeLast, safeInit)
 import Data.Maybe
+import Data.Function ((&))
+import Control.Monad (mfilter)
 
 parseFunDec :: Sexp -> Maybe [FunDec]
 parseFunDec (Atom _) = Just []
@@ -58,6 +60,7 @@ globalEnv ss = do
 parseTop :: Sexp -> CompileResult Top
 parseTop s = (uncurry4 FunTop <$> parseFun s)
     <|> (uncurry3 VarTop <$> parseVar s)
+    <|> (IncludeTop <$> parseInclude s)
 
 parseLit :: Sexp -> CompileResult Lit
 parseLit (Atom "true") = pure $ BoolLit True
@@ -86,6 +89,19 @@ parseExpr s =
     (CallExpr <$> parseCall s) 
         <|> (LitExpr <$> parseLit s)
         <|> (VarExpr <$> parseIdentifier s)
+
+parseInclude :: Sexp -> CompileResult [String]
+parseInclude (List (Atom "include" : includes)) = 
+    let 
+        mapInclude :: Sexp -> Maybe String
+        mapInclude (List _) = Nothing
+        mapInclude (Atom s) = (Just s) & mfilter (\s -> length s >= 3)
+    in 
+        if null includes then failCompile IncludesEmptyError else 
+        case traverse mapInclude includes of
+            Nothing -> failCompile IncludeInvalidError
+            Just includes' -> pure includes'
+parseInclude _ = empty
 
 parseFun :: Sexp -> CompileResult (String, [(String, Sexp)], Sexp, [Body])
 parseFun (Atom _) = empty
