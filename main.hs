@@ -35,10 +35,6 @@ greenFilesSexps = do
     sexps <- traverse filePathSexps paths
     pure $ concat <$> sequence sexps
 
-
-(<<$>>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
-(<<$>>) = fmap . fmap
-
 main :: IO ()
 main = do
     sexpsM <- greenFilesSexps

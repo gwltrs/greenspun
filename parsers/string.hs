@@ -7,7 +7,7 @@ import Data.Bool
 import Data.Tuple
 import Utils
 import Data.List (intercalate)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, catMaybes)
 import Type.Sexp
 
 char :: Char -> StringParser Char
@@ -29,7 +29,7 @@ symbol :: StringParser String
 symbol = strLit <|> nonWS
     where
         strLit = (\s -> "\"" ++ s ++ "\"") <$> (char '"' *> whileNE (/= '"') <* char '"')
-        nonWS = whileNE (\c -> isVisible c && c /= '(' && c /= ')')
+        nonWS = whileNE (\c -> isVisible c && c /= '(' && c /= ')' && c /= ';')
  
 while :: (Char -> Bool) -> StringParser String
 while f = Parser $ Just . swap . span f
@@ -50,10 +50,30 @@ atom :: StringParser Sexp
 atom = fmap Atom symbol
 
 sexp :: StringParser Sexp
-sexp = atom <|> list
+sexp = atom <|> list --(Nothing <$ comment) <|> (Just <$> )
+    
+    -- Just <$> (atom <|> list)
 
-unsafeSexp :: String -> Sexp
-unsafeSexp s = snd $ fromJust $ runParser sexp s
+-- unsafeSexp :: String -> Sexp
+-- unsafeSexp s = snd $ fromJust $ runParser sexp s
 
 sexps :: StringParser [Sexp]
-sexps = ws *> manySepBy ws sexp <* ws
+sexps = ws *> (catMaybes <$> manySepBy ws sexpMaybe) <* ws
+    where
+        sexpMaybe :: StringParser (Maybe Sexp)
+        sexpMaybe = (Nothing <$ comment) <|> (Just <$> sexp)
+
+unsafe :: StringParser a -> (String -> a)
+unsafe (Parser { runParser = f }) s = snd $ fromJust $ f s
+
+comment :: StringParser ()
+comment = char ';' *> (lineComment <|> void sexp)
+    where
+        lineComment = (void wsNE <|> void (char ';')) *> void (while (/= '\n'))
+
+
+-- lineComment :: StringParser ()
+-- lineComment = char ';' *> (void wsNE <|> void (char ';')) *> void (while (/= '\n'))
+
+-- sexpComment :: StringParser ()
+-- sexpComment = char ';' *> void sexp

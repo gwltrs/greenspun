@@ -8,10 +8,22 @@ data Lit
     | StringLit String
     deriving (Show, Eq)
 
+data LitTyped
+    = BoolLitTyped Bool
+    | IntLitTyped Int Sexp
+    | StringLitTyped String
+    deriving (Show, Eq)
+
 data Expr
     = CallExpr [Expr]
     | LitExpr Lit
     | VarExpr String
+    deriving (Show, Eq)
+
+data ExprTyped
+    = CallExprTyped [Expr] Sexp
+    | LitExprTyped Lit Sexp
+    | VarExprTyped String Sexp
     deriving (Show, Eq)
 
 data Body

@@ -47,7 +47,7 @@ transpileVar ([name], type_, [Nothing]) = transpileType type_ ++ " " ++ mangleSt
 transpileVar ([name], type_, [Just value]) = transpileType type_ ++ " " ++ mangleString name ++ " = " ++ transpileExpr value
 transpileVar (names, type_, values) =
     let
-        (strippedType, ptrs) = stripPointrs $ transpileType type_
+        (strippedType, ptrs) = stripPointers $ transpileType type_
         zipped :: [(String, Maybe Expr)]
         zipped = zip names values
         mapRow :: (String, Maybe Expr) -> String
@@ -119,8 +119,8 @@ transpileAll tops = {- "#include <stdio.h>\n" ++ -} unlines $ transpileTop <$> t
 tabs :: Int -> String
 tabs i = replicate i '\t'
 
-stripPointrs :: String -> (String, Int)
-stripPointrs = second length . break (== '*')
+stripPointers :: String -> (String, Int)
+stripPointers = second length . break (== '*')
 
 mangleFun :: String -> String
 mangleFun s = "gsfun_" ++ mangleString s

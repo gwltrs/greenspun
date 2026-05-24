@@ -31,9 +31,6 @@ isVisible c = 33 <= ord c && ord c <= 126
 isWhitespace :: Char -> Bool
 isWhitespace c = let n = ord c in n == 9 || n == 10 || n == 13 || n == 32 
 
-combine :: (b -> c -> d) -> (a -> b) -> (a -> c) -> (a -> d)
-combine (?) f g x = f x ? g x
-
 findRelativeGreenFilePaths :: FilePath -> IO [FilePath]
 findRelativeGreenFilePaths rel = do
     let dir = if null rel then "." else rel
@@ -45,6 +42,9 @@ findRelativeGreenFilePaths rel = do
         if isDir
             then findRelativeGreenFilePaths relPath
             else pure [relPath | takeExtension name == ".green"]
+
+combine :: (b -> c -> d) -> (a -> b) -> (a -> c) -> (a -> d)
+combine (?) f g x = f x ? g x
 
 (&&&) :: (a -> Bool) -> (a -> Bool) -> a -> Bool
 (&&&) = combine (&&)
@@ -101,3 +101,6 @@ traceLabel l v = trace (l ++ ": " ++ show v) v
 
 nonEx :: String -> a
 nonEx s = error ("Runtime error due to non-exhaustive pattern matching in " ++ s)
+
+(<<$>>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
+(<<$>>) = fmap . fmap

@@ -3,8 +3,15 @@
 (var xs (* I32) ())
 (var (x y z) (* I32) ())
 
+;(macro drain (var-name) (return (`            
+    (for () (> (, var-name) 0) (-- (, var-name)) 
+        (++ z)) 
+)))
+
 (fun + (x I32 y I32) -> I32
-    (for (var z I32 x) (> y 0) (+= y 1) (inc z))
+    (var z I32)
+    (drain x)
+    (drain y)
     (return z))
 
 (fun forever () 
@@ -12,3 +19,9 @@
 
 (fun main ()
     (printf "asdf !!"))
+
+(fun calculate-infinity ()
+    (var x I32)
+    (for () () ()
+        (++ x))
+    (return x))
