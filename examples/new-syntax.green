@@ -20,7 +20,7 @@
 (fun main ()
     (printf "asdf !!"))
 
-(fun calculate-infinity ()
+(fun calculate-infinity () -> I32
     (var x I32)
     (for () () ()
         (++ x))

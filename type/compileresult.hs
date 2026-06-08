@@ -2,6 +2,7 @@ module Type.CompileResult where
 
 import Control.Applicative
 import Utils
+import Type.Env (EnvEntry)
 
 newtype CompileResult a = CompileResult (Either [CompileError] (Maybe a)) deriving Show
 
@@ -48,6 +49,7 @@ data CompileError
     | IncludesEmptyError
     | IncludeInvalidError
     | MiscError
+    | TypeCheckConflict EnvEntry EnvEntry
     deriving Show
 
 elseCompileError :: CompileError -> Maybe a -> CompileResult a

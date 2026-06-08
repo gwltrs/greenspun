@@ -21,6 +21,7 @@ import Distribution.Simple.Utils (safeLast, safeInit)
 import Data.Bifunctor (second)
 import Data.Char (ord)
 import Transpile
+import TypeCheck
 
 filePathSexps :: FilePath -> IO (Maybe [Sexp])
 filePathSexps path = do
