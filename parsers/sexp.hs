@@ -26,14 +26,10 @@ import Control.Monad (mfilter, join, foldM)
 --             hasArrow = (rest !? 0) == Just (Atom "->")
 --             returnType = if hasArrow then rest !! 1 else Atom "Void"
 
-
-
 -- -- parseFunDec (List ((Atom "fun") : (returnType : ((Atom name): (List args: _)))))
 -- --     | odd $ length args = Nothing
 -- --     | any (\case (List _) -> True; (Atom _) -> False) $ snds args = Nothing
 -- --     | otherwise = Just $ [FunDec { funName = name, funType = List ([Atom "Fun", returnType] <> fsts args) }]
-
-
 
 -- parseFunDec (List (Atom "fun" : rest)) = Nothing
 -- parseFunDec _ = Just []
@@ -47,11 +43,11 @@ import Control.Monad (mfilter, join, foldM)
 --     names <&> (\ns -> ns <&> (\n -> VarDec { varName = n, varType = rest !! 1 }))
 -- parseVarDec _ = Just []
 
-envEntryFromTop :: Top -> Maybe [EnvEntry]
+envEntryFromTop :: Top -> Maybe [(String, EnvEntry)]
 envEntryFromTop (FunTop name params returnType body) = 
     let type_ = List ([Atom "Fun"] ++ (snd <$> params) ++ [returnType])
-    in Just [EnvEntry (name, type_)]
-envEntryFromTop (VarTop names type_ values) = Just $ (\n -> EnvEntry (n, type_)) <$> names
+    in Just [(name, envEntryFromSexp type_)]
+envEntryFromTop (VarTop names type_ values) = Just $ (\n -> (n, envEntryFromSexp type_)) <$> names
 envEntryFromTop (IncludeTop _) = Nothing
 
 -- data Top
@@ -60,10 +56,10 @@ envEntryFromTop (IncludeTop _) = Nothing
 --     | IncludeTop [String]
 --     deriving Show
 
-envFromTops :: [Top] -> Either (EnvEntry, EnvEntry) Env
-envFromTops tops = 
-    let entries = join $ mapMaybe envEntryFromTop tops
-    in foldM (flip addToEnv) emptyEnv entries
+envFromTops :: [Top] -> Either ((String, EnvEntry), (String, EnvEntry)) Env
+envFromTops tops = undefined
+    -- let entries = join $ mapMaybe envEntryFromTop tops
+    -- in foldM (flip addToEnv) emptyEnv entries
 
 globalEnv :: [Sexp] -> Env
 globalEnv ss = undefined

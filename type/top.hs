@@ -4,6 +4,10 @@ import Type.Sexp
 
 newtype Typed a = Typed (Sexp, a) deriving Show
 
+instance Functor Typed where
+    fmap :: (a -> b) -> Typed a -> Typed b
+    fmap f (Typed (sexp, value)) = Typed (sexp, f value)
+
 data Lit
     = BoolLit Bool
     | IntLit Int
@@ -22,10 +26,10 @@ data Expr
     | VarExpr String
     deriving (Show, Eq)
 
-data ExprT
-    = CallExprT [Typed Expr]
-    | LitExprT (Typed Lit)
-    | VarExprT (Typed String)
+-- data ExprT
+--     = CallExprT [Typed Expr]
+--     | LitExprT (Typed Lit)
+--     | VarExprT (Typed String)
 
 -- data ExprTyped
 --     = CallExprTyped [Expr] Sexp
