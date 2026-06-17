@@ -6,7 +6,7 @@ import Type.CompileResult
 import Type.Top
 import Type.Sexp
 import Type.Env
-import Data.Set hiding (drop, empty, null, filter)
+import Data.Set hiding (drop, empty, null, filter, foldr)
 import Utils
 import Data.Functor
 import Control.Applicative
@@ -15,34 +15,6 @@ import Data.Maybe
 import Data.Function ((&))
 import Control.Monad (mfilter, join, foldM)
 
--- parseFunDec :: Sexp -> Maybe [FunDec]
--- parseFunDec (Atom _) = Just []
--- parseFunDec (List ((Atom "fun") : (Atom name) : (List args) : rest))
---     | odd $ length args = Nothing
---     | any (\case (List _) -> True; (Atom _) -> False) $ fsts args = Nothing
---     | hasArrow && (length rest == 1) = Nothing
---     | otherwise = Just [FunDec { funName = name, funType = List ([Atom "->"] <> snds args <> [returnType]) }]
---         where
---             hasArrow = (rest !? 0) == Just (Atom "->")
---             returnType = if hasArrow then rest !! 1 else Atom "Void"
-
--- -- parseFunDec (List ((Atom "fun") : (returnType : ((Atom name): (List args: _)))))
--- --     | odd $ length args = Nothing
--- --     | any (\case (List _) -> True; (Atom _) -> False) $ snds args = Nothing
--- --     | otherwise = Just $ [FunDec { funName = name, funType = List ([Atom "Fun", returnType] <> fsts args) }]
-
--- parseFunDec (List (Atom "fun" : rest)) = Nothing
--- parseFunDec _ = Just []
-
--- parseVarDec :: Sexp -> Maybe [VarDec]
--- parseVarDec (Atom _) = Just []
--- parseVarDec (List ((Atom "var") : rest)) =
---     let len = length rest in
---     if len < 2 || len > 3 then Nothing else
---     let names = flatNotEmptyAtoms $ head rest in
---     names <&> (\ns -> ns <&> (\n -> VarDec { varName = n, varType = rest !! 1 }))
--- parseVarDec _ = Just []
-
 envEntryFromTop :: Top -> Maybe [(String, EnvEntry)]
 envEntryFromTop (FunTop name params returnType body) = 
     let type_ = List ([Atom "Fun"] ++ (snd <$> params) ++ [returnType])
@@ -50,16 +22,13 @@ envEntryFromTop (FunTop name params returnType body) =
 envEntryFromTop (VarTop names type_ values) = Just $ (\n -> (n, envEntryFromSexp type_)) <$> names
 envEntryFromTop (IncludeTop _) = Nothing
 
--- data Top
---     = FunTop String [(String, Sexp)] Sexp [Body]
---     | VarTop [String] Sexp [Maybe Expr] 
---     | IncludeTop [String]
---     deriving Show
-
-envFromTops :: [Top] -> Either ((String, EnvEntry), (String, EnvEntry)) Env
-envFromTops tops = undefined
-    -- let entries = join $ mapMaybe envEntryFromTop tops
-    -- in foldM (flip addToEnv) emptyEnv entries
+envFromTops :: [Top] -> Either (String, EnvEntry, EnvEntry) Env
+envFromTops tops =
+    let 
+        entries :: [(String, EnvEntry)]
+        entries = join (mapMaybe envEntryFromTop tops)
+    in
+        foldM (\env (name, entry) -> addToEnv name entry env) emptyEnv entries
 
 globalEnv :: [Sexp] -> Env
 globalEnv ss = undefined

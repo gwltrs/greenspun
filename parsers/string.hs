@@ -71,7 +71,6 @@ comment = char ';' *> (lineComment <|> void sexp)
     where
         lineComment = (void wsNE <|> void (char ';')) *> void (while (/= '\n'))
 
-
 -- lineComment :: StringParser ()
 -- lineComment = char ';' *> (void wsNE <|> void (char ';')) *> void (while (/= '\n'))
 

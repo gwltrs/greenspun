@@ -24,10 +24,6 @@ typeCheckExpr env (Just expected) (LitExpr lit) =
         if expected == type_
         then Right (LitExpr <$> tl)
         else Left $ ExpectedXButGotYError expected type_
-    
-    -- Right (LitExpr <$> typeCheckLit lit)
-    -- let (Typed (type_, lit')) = typeCheckLit lit
-    -- in undefined
 
 -- typeCheckExpr :: Env -> Maybe Sexp -> Expr -> ExprT
 -- typeCheckExpr env expected (LitExpr lit) = 

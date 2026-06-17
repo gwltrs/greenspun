@@ -6,7 +6,7 @@ import Data.Maybe (fromJust)
 
 data EnvEntry = VarEntry Sexp | FunsEntry [Sexp] deriving Show
 
-newtype Env = Env (M.Map String EnvEntry) -- Env { varDecs :: Set VarDec, funDecs :: Set FunDec } deriving Show
+newtype Env = Env (M.Map String EnvEntry)
 
 addToEnv :: String -> EnvEntry -> Env -> Either (String, EnvEntry, EnvEntry) Env
 addToEnv name entry (Env map) = 
