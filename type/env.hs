@@ -27,3 +27,12 @@ envEntryFromSexp l@(List _) = VarEntry l
 
 emptyEnv :: Env
 emptyEnv = Env M.empty
+
+oneEntry :: EnvEntry -> Maybe Sexp
+oneEntry (VarEntry var) = Just var
+oneEntry (FunsEntry [fun]) = Just fun
+oneEntry (FunsEntry _) = Nothing
+
+allEntries :: EnvEntry -> [Sexp]
+allEntries (VarEntry var) = [var]
+allEntries (FunsEntry funs) = funs

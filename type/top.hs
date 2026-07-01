@@ -8,6 +8,9 @@ instance Functor Typed where
     fmap :: (a -> b) -> Typed a -> Typed b
     fmap f (Typed (sexp, value)) = Typed (sexp, f value)
 
+getType :: Typed a -> Sexp
+getType (Typed (sexp, a)) = sexp
+
 data Lit
     = BoolLit Bool
     | IntLit Int
