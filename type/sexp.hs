@@ -24,3 +24,11 @@ flatNotEmptyAtoms (List l) = mapM (\case (List _) -> Nothing; (Atom s') -> Just 
 isFun :: Sexp -> Bool
 isFun (List (Atom "Fun" : _)) = True
 isFun _ = False
+
+arity :: Sexp -> Maybe Int
+arity (List (Atom "Fun" : args)) = Just $ length args
+arity _ = Nothing
+
+returnType :: Sexp -> Maybe Sexp
+returnType (List (Atom "Fun" : args)) = if null args then Nothing else Just $ last args
+returnType _ = Nothing

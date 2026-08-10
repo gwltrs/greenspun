@@ -25,3 +25,11 @@
     (for () () ()
         (++ x))
     (return x))
+
+(fun * (pointer (* A)) -> A
+    
+)
+
+(fun & (value A) -> (* A)
+
+)

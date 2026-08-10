@@ -2,14 +2,31 @@ module Type.Top where
 
 import Type.Sexp
 
-newtype Typed a = Typed (Sexp, a) deriving Show
+newtype Typed a = Typed (PossibleTypes, a) deriving Show
+
+-- getType :: Typed a -> Sexp
+-- getType (Typed (sexp, a)) = sexp
 
 instance Functor Typed where
     fmap :: (a -> b) -> Typed a -> Typed b
-    fmap f (Typed (sexp, value)) = Typed (sexp, f value)
+    fmap f (Typed (types, value)) = Typed (types, f value)
 
-getType :: Typed a -> Sexp
-getType (Typed (sexp, a)) = sexp
+data PossibleTypes 
+    = AllTypes
+    | NonVoidTypes
+    | TheseTypes [Sexp] -- Should never be empty
+    deriving Show
+
+-- instance Semigroup PossibleTypes where
+--     AllTypes (<>) AllTypes = AllTypes
+--     AllTypes (<>) NonVoidTypes = NonVoidTypes
+--     AllTypes (<>) ts@(TheseTypes _) = ts
+--     NonVoidTypes (<>) AllTypes = NonVoidTypes
+--     NonVoidTypes (<>) NonVoidTypes = NonVoidTypes
+--     NonVoidTypes (<>) TheseTypes types = 
+--     TheseTypes types (<>) = AllTypes
+--     TheseTypes types (<>) = NonVoidTypes 
+--     TheseTypes types (<>) = TheseTypes types
 
 data Lit
     = BoolLit Bool
