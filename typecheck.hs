@@ -27,15 +27,19 @@ typeCheckLit b@(BoolLit _) = Typed (TheseTypes [Atom "Bool"], b)
 typeCheckLit i@(IntLit _) = Typed (TheseTypes [Atom "Int"], i)
 typeCheckLit s@(StringLit _) = Typed (TheseTypes [List [Atom "*", Atom "Char"]], s)
 
+typeCheckLit' :: PossibleTypes -> Lit -> Either TypeCheckError (Typed Lit)
+typeCheckLit' expected = applyExpectedTypesToTyped expected . typeCheckLit
+
 typeCheckVar :: Env -> PossibleTypes -> String -> Either TypeCheckError (Typed String)
 typeCheckVar (Env map) expectedTypes varName = 
     case allEntries <$> lookup varName map of
         Nothing -> Left $ NoValueWithNameError varName
-        Just allEntries -> (Typed . (, varName)) <$> intersectPossibleTypes expectedTypes (TheseTypes allEntries)
+        Just allEntries' -> applyExpectedTypesToTyped expectedTypes (Typed (TheseTypes allEntries', varName)) 
+            -- (Typed . (, varName)) <$> intersectPossibleTypes expectedTypes (TheseTypes allEntries)
 
 typeCheckCall :: Env -> PossibleTypes -> [Expr] -> Either TypeCheckError (Typed [Expr])
 typeCheckCall (Env map) _ ((LitExpr l) : args) = Left $ CallMadeWithNonFunctionType $ getType $ typeCheckLit l
-typeCheckCall (Env map) _ ((CallExpr funName) : args) = undefined
+typeCheckCall (Env map) _ (callExpr@(CallExpr funName) : args) = error "typeCheckCall: haven't implemented call typechecking when the function is produced by a function call"
 typeCheckCall env@(Env map) expectedReturnType ve@((VarExpr v) : args) =
     case lookup v map of
         Nothing -> Left $ NoValueWithNameError v
@@ -68,7 +72,8 @@ typeCheckCall env@(Env map) expectedReturnType ve@((VarExpr v) : args) =
                             Right (typedArgs' :: [Typed Expr]) -> 
                                 let 
                                     paramAndArgMatch :: Sexp -> Typed Expr -> Bool
-                                    paramAndArgMatch s (Typed (possibleTypes, expr)) = undefined
+                                    paramAndArgMatch s (Typed (possibleTypes, expr)) = 
+                                        either (const False) (const True) $ intersectPossibleTypes (TheseTypes [s]) possibleTypes
                                     filterPossibleMatchesByArgType :: Sexp -> Bool
                                     filterPossibleMatchesByArgType param = 
                                         let
@@ -108,9 +113,6 @@ filterNonSevere rows =
     in 
         sequence rows' 
 
-
-
-
 --                         let 
 --                             argTypes :: [Either TypeCheckError (Typed [Expr])]
 --                             argTypes = (typeCheckExpr env expectedReturnType) <$> args
@@ -118,23 +120,10 @@ filterNonSevere rows =
 --                             undefined
                         -- next filter based on immediately type-able variables
 
-
-
-
-
-
 typeCheckExpr :: Env -> PossibleTypes -> Expr -> Either TypeCheckError (Typed Expr)
-typeCheckExpr = undefined
--- typeCheckExpr (Env map) Nothing (LitExpr lit) = Right $ LitExpr <$> typeCheckLit lit
--- typeCheckExpr (Env map) (Just expecteds) (LitExpr lit) = 
---     case typeCheckLit lit of
---         t@(Typed (Nothing, lit')) -> Right $ LitExpr <$> t
---         (Typed (Just types, lit')) -> 
---             case intersect expecteds types of 
---                 [] -> Left $ ExpectedXsButGotYsError expecteds types
---                 valids -> Right $ Typed (Just valids, LitExpr lit')
--- typeCheckExpr (Env map) expectedType (VarExpr varName) = undefined
--- typeCheckExpr (Env map) expectedType (CallExpr exprs) = undefined
+typeCheckExpr _ expected (LitExpr lit) = LitExpr <<$>> typeCheckLit' expected lit
+typeCheckExpr env expected (VarExpr varName) = VarExpr <<$>> typeCheckVar env expected varName
+typeCheckExpr env expected (CallExpr call) = CallExpr <<$>> typeCheckCall env expected call
 
 intersectPossibleTypes :: PossibleTypes -> PossibleTypes -> Either TypeCheckError PossibleTypes
 intersectPossibleTypes AllTypes r = Right r
@@ -148,6 +137,12 @@ intersectPossibleTypes l'@(TheseTypes l) r'@(TheseTypes r) =
     case intersect l r of
         [] -> Left $ ExpectedXsButGotYsError l' r'
         valids -> Right $ TheseTypes valids
+
+applyExpectedTypesToTyped :: PossibleTypes -> Typed a -> Either TypeCheckError (Typed a)
+applyExpectedTypesToTyped expected (Typed (actual, a)) = 
+    case intersectPossibleTypes expected actual of
+        Left error -> Left error
+        Right types -> Right $ Typed (types, a)
 
 -- data PossibleTypes 
 --     = AllTypes
