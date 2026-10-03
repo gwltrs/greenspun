@@ -32,3 +32,7 @@ arity _ = Nothing
 returnType :: Sexp -> Maybe Sexp
 returnType (List (Atom "Fun" : args)) = if null args then Nothing else Just $ last args
 returnType _ = Nothing
+
+argAtIndex :: Int -> Sexp -> Sexp
+argAtIndex i (List (Atom "->" : args)) = args !! i
+argAtIndex _ _ = nonEx "argAtIndex: not a function"

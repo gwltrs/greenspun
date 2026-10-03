@@ -104,3 +104,13 @@ nonEx s = error ("Runtime error due to non-exhaustive pattern matching in " ++ s
 
 (<<$>>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
 (<<$>>) = fmap . fmap
+
+mapListWithIndex :: (Int -> a -> b) -> [a] -> [b]
+mapListWithIndex f xs = [f i x | (i, x) <- zip [0 ..] xs]
+
+rightToMaybe :: Either a b -> Maybe b
+rightToMaybe (Left _) = Nothing
+rightToMaybe (Right b) = Just b
+
+upTo :: Int -> [Int]
+upTo i = [0 .. (i - 1)]

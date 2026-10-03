@@ -4,12 +4,14 @@ import Type.Top
 import Type.Sexp
 import Type.Env
 import Data.Map (lookup)
-import Data.Maybe (fromMaybe, fromJust)
-import Data.List (intersect)
+import Data.Maybe (fromMaybe, fromJust, mapMaybe)
+import Data.List (intersect, union, nub)
 import Prelude hiding (lookup)
 import Data.Foldable hiding (length)
-import Utils ((<<$>>))
+import Utils ((<<$>>), mapListWithIndex, rightToMaybe, upTo)
 import Type.Top (PossibleTypes(..))
+import Data.Functor ((<&>))
+import Data.Function ((&))
 
 data TypeCheckError 
     = ExpectedXsButGotYsError PossibleTypes PossibleTypes
@@ -17,30 +19,112 @@ data TypeCheckError
     | NoValueWithNameError String
     | CallMadeWithNonFunctionType Sexp
     | NoFunctionWithThatArityOrReturnType String
+    | NoFunctionWithThoseArgTypesError String
+    | AmbiguousFunctionOverloadError String 
 
 typeCheckLit :: Lit -> Typed Lit
 typeCheckLit b@(BoolLit _) = Typed (TheseTypes [Atom "Bool"], b)
 typeCheckLit i@(IntLit _) = Typed (TheseTypes [Atom "Int"], i)
 typeCheckLit s@(StringLit _) = Typed (TheseTypes [List [Atom "*", Atom "Char"]], s)
 
--- typeCheckVar :: Env -> PossibleTypes -> String -> Either TypeCheckError (Typed String)
--- typeCheckVar (Env map) expectedType varName = 
---     let 
---         entries :: [Sexp]
---         entries = fromMaybe [] (allEntries <$> lookup varName map)
---     in
---         case (expectedType, entries) of
---             (_, []) -> Left $ NoValueWithNameError varName
---             (Nothing, entries') -> Right $ Typed (Just entries', varName)
---             (Just expecteds, entries') -> 
---                 case intersect expecteds entries' of
---                     [] -> Left $ ExpectedXsButGotYsError expecteds entries'
---                     valids -> Right $ Typed (Just valids, varName)
+typeCheckVar :: Env -> PossibleTypes -> String -> Either TypeCheckError (Typed String)
+typeCheckVar (Env map) expectedTypes varName = 
+    case allEntries <$> lookup varName map of
+        Nothing -> Left $ NoValueWithNameError varName
+        Just allEntries -> (Typed . (, varName)) <$> intersectPossibleTypes expectedTypes (TheseTypes allEntries)
 
--- typeCheckCall :: Env -> PossibleTypes -> [Expr] -> Either TypeCheckError (Typed [Expr])
--- typeCheckCall = undefined
+typeCheckCall :: Env -> PossibleTypes -> [Expr] -> Either TypeCheckError (Typed [Expr])
+typeCheckCall (Env map) _ ((LitExpr l) : args) = Left $ CallMadeWithNonFunctionType $ getType $ typeCheckLit l
+typeCheckCall (Env map) _ ((CallExpr funName) : args) = undefined
+typeCheckCall env@(Env map) expectedReturnType ve@((VarExpr v) : args) =
+    case lookup v map of
+        Nothing -> Left $ NoValueWithNameError v
+        Just (VarEntry sexp) -> Left $ CallMadeWithNonFunctionType sexp
+        Just (FunsEntry sexps) -> 
+            let 
+                funsWithMatchingArity :: [Sexp]
+                funsWithMatchingArity = filter (\s -> arity s == Just (length args)) sexps
+                filterBasedOnReturnType :: PossibleTypes -> (Sexp -> Bool)
+                filterBasedOnReturnType AllTypes _ = True
+                filterBasedOnReturnType NonVoidTypes s = s /= Atom "Void"
+                filterBasedOnReturnType (TheseTypes types) s = elem s types
+                funsWithMatchingReturnType :: [Sexp]
+                funsWithMatchingReturnType = filter (filterBasedOnReturnType expectedReturnType) funsWithMatchingArity
+            in case funsWithMatchingReturnType of
+                [] -> Left $ NoFunctionWithThatArityOrReturnType v
+                [exactMatch] -> Right $ Typed (TheseTypes [fromJust $ returnType exactMatch], ve)
+                (possibleMatches :: [Sexp]) -> 
+                    let 
+                        typedArgs :: [Either TypeCheckError (Typed Expr)]
+                        typedArgs = args & mapListWithIndex (\i arg -> 
+                            let 
+                                expectedTypes :: PossibleTypes
+                                expectedTypes = TheseTypes $ nub $ argAtIndex i <$> possibleMatches
+                            in 
+                                typeCheckExpr env expectedTypes arg)
+                    in
+                        case sequence typedArgs of
+                            Left error -> Left error
+                            Right (typedArgs' :: [Typed Expr]) -> 
+                                let 
+                                    paramAndArgMatch :: Sexp -> Typed Expr -> Bool
+                                    paramAndArgMatch s (Typed (possibleTypes, expr)) = undefined
+                                    filterPossibleMatchesByArgType :: Sexp -> Bool
+                                    filterPossibleMatchesByArgType param = 
+                                        let
+                                            argValidations :: [Bool]
+                                            -- argValidations = typedArgs' <$> (\ta -> paramAndArgMatch  ta)
+                                            argValidations = upTo (length typedArgs') 
+                                                <&> (\i -> paramAndArgMatch (argAtIndex i param) (typedArgs' !! i))
+                                        in
+                                            and argValidations
+                                in
+                                    case filter filterPossibleMatchesByArgType possibleMatches of
+                                        [] -> Left $ NoFunctionWithThoseArgTypesError v
+                                        [exactMatch'] -> Right $ Typed (TheseTypes [fromJust $ returnType exactMatch'], ve)
+                                        possibleMatches' -> Left $ AmbiguousFunctionOverloadError v
 
--- typeCheckExpr :: Env -> PossibleTypes -> Expr -> Either TypeCheckError (Typed Expr)
+                    -- let
+                    --     argTypes :: [[Either TypeCheckError (Typed Expr)]]
+                    --     argTypes = possibleMatches <&> 
+                    --         (\possibleMatch -> (flip mapListWithIndex) args 
+                    --             (\i arg -> typeCheckExpr env (TheseTypes [argAtIndex i possibleMatch]) arg))         
+                    --     argTypes' :: Either TypeCheckError [[Typed Expr]]
+                    --     argTypes' = filterNonSevere argTypes -- (mapM sequence) argTypes -- sequence <$> sequence argTypes
+                    -- in
+                    --     case argTypes' of
+                    --         (Left error) -> Left error
+                    --         (Right argTypes'') -> undefined
+
+filterNonSevere :: [[Either TypeCheckError (Typed Expr)]] -> Either TypeCheckError [[Typed Expr]]
+filterNonSevere rows = 
+    let 
+        isNonSevere :: Either TypeCheckError [Typed Expr] -> Bool
+        isNonSevere (Right _) = True
+        isNonSevere (Left (ExpectedXsButGotYsError _ _)) = True
+        isNonsever = False
+        rows' :: [Either TypeCheckError [Typed Expr]]
+        rows' = filter isNonSevere $ sequence <$> rows
+    in 
+        sequence rows' 
+
+
+
+
+--                         let 
+--                             argTypes :: [Either TypeCheckError (Typed [Expr])]
+--                             argTypes = (typeCheckExpr env expectedReturnType) <$> args
+--                         in
+--                             undefined
+                        -- next filter based on immediately type-able variables
+
+
+
+
+
+
+typeCheckExpr :: Env -> PossibleTypes -> Expr -> Either TypeCheckError (Typed Expr)
+typeCheckExpr = undefined
 -- typeCheckExpr (Env map) Nothing (LitExpr lit) = Right $ LitExpr <$> typeCheckLit lit
 -- typeCheckExpr (Env map) (Just expecteds) (LitExpr lit) = 
 --     case typeCheckLit lit of
@@ -60,10 +144,26 @@ intersectPossibleTypes l@NonVoidTypes r@(TheseTypes [Atom "Void"]) = Left $ Expe
 intersectPossibleTypes NonVoidTypes (TheseTypes r) = Right $ TheseTypes $ filter (/= Atom "Void") r
 intersectPossibleTypes l@(TheseTypes [Atom "Void"]) r@NonVoidTypes = Left $ ExpectedXsButGotYsError l r
 intersectPossibleTypes (TheseTypes l) NonVoidTypes = Right $ TheseTypes $ filter (/= Atom "Void") l
-intersectPossibleTypes l@(TheseTypes expected) r@(TheseTypes actual) = 
-    case intersect expected actual of
-        [] -> Left $ ExpectedXsButGotYsError l r
+intersectPossibleTypes l'@(TheseTypes l) r'@(TheseTypes r) = 
+    case intersect l r of
+        [] -> Left $ ExpectedXsButGotYsError l' r'
         valids -> Right $ TheseTypes valids
+
+-- data PossibleTypes 
+--     = AllTypes
+--     | NonVoidTypes
+--     | TheseTypes [Sexp] -- Should never be empty
+--     deriving Show
+
+-- We aren't implementing generics yet 
+-- unionSpecificNonVoids :: [Sexp] -> [Sexp]
+-- unionSpecificNonVoids types = foldr (union) [] types
+    -- let 
+    --     getArr :: PossibleTypes -> [Sexp]
+    --     getArr (TheseTypes types') = types'
+    --     getArr _ = []
+    -- in 
+    --     foldr (union . getArr) [] types
 
 -- applyExpectedTypes :: PossibleTypes -> Typed a -> Either TypeCheckError (Typed a)
 -- applyExpectedTypes expectedTypes (Typed (possibleTypes, inner)) =
@@ -138,40 +238,6 @@ intersectPossibleTypes l@(TheseTypes expected) r@(TheseTypes actual) =
 
 
 
-
--- typeCheckCall :: Env -> ExpectedReturnType -> [Expr] -> Either TypeCheckError (Typed [Expr])
--- typeCheckCall (Env map) _ ((LitExpr l) : args) = Left $ CallMadeWithNonFunctionType $ getType $ typeCheckLit l
--- typeCheckCall (Env map) _ ((CallExpr funName) : args) = undefined
--- typeCheckCall env@(Env map) expectedReturnType ve@((VarExpr v) : args) = 
---     case lookup v map of
---         Nothing -> Left $ NoValueWithNameError v
---         Just (VarEntry sexp) -> Left $ CallMadeWithNonFunctionType sexp
---         Just (FunsEntry sexps) -> 
---             let 
---                 funsWithMatchingArity :: [Sexp]
---                 funsWithMatchingArity = filter (\s -> arity s == Just (length args)) sexps
---                 filterBasedOnReturnType :: ExpectedReturnType -> (Sexp -> Bool)
---                 filterBasedOnReturnType ert s = 
---                     case ert of
---                         ExpectingVoid -> s == Atom "Void"
---                         ExpectingAnyNonVoid -> s /= Atom "Void"
---                         ExpectingTheseNonVoids ts -> elem s ts
---                         ExpectingThisNonVoid t -> s == t
---                 funsWithMatchingReturnType :: [Sexp]
---                 funsWithMatchingReturnType = filter (filterBasedOnReturnType expectedReturnType) funsWithMatchingArity
---             in 
---                 case funsWithMatchingReturnType of
---                     [] -> Left $ NoFunctionWithThatArityOrReturnType v
---                     [exactMatch] -> Right $ Typed (fromJust $ returnType exactMatch, ve)
---                     possibleMatches -> 
---                         let 
---                             argTypes :: [Either TypeCheckError (Typed [Expr])]
---                             argTypes = (typeCheckExpr env expectedReturnType) <$> args
---                         in
---                             undefined
-                        -- next filter based on immediately type-able variables
-
-    -- filter by arg count
 
 -- data ExpectedReturnType
 --     = ExpectingVoid

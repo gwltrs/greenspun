@@ -4,8 +4,8 @@ import Type.Sexp
 
 newtype Typed a = Typed (PossibleTypes, a) deriving Show
 
--- getType :: Typed a -> Sexp
--- getType (Typed (sexp, a)) = sexp
+getType :: Typed a -> Sexp
+getType (Typed (TheseTypes [sexp], a)) = sexp
 
 instance Functor Typed where
     fmap :: (a -> b) -> Typed a -> Typed b
