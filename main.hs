@@ -22,19 +22,8 @@ import Data.Bifunctor (second)
 import Data.Char (ord)
 import Transpile
 import TypeCheck
-
-filePathSexps :: FilePath -> IO (Maybe [Sexp])
-filePathSexps path = do
-    text <- readFile path
-    case runParser sexps text of
-        Just (unparsed, sexps) -> pure (if unparsed == "" then Just sexps else Nothing)
-        Nothing -> pure Nothing
-
-greenFilesSexps :: IO (Maybe [Sexp])
-greenFilesSexps = do
-    paths <- findRelativeGreenFilePaths ""
-    sexps <- traverse filePathSexps paths
-    pure $ concat <$> sequence sexps
+import IO (greenFilesSexps)
+import Repl
 
 main :: IO ()
 main = do

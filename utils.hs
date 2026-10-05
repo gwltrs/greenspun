@@ -31,18 +31,6 @@ isVisible c = 33 <= ord c && ord c <= 126
 isWhitespace :: Char -> Bool
 isWhitespace c = let n = ord c in n == 9 || n == 10 || n == 13 || n == 32 
 
-findRelativeGreenFilePaths :: FilePath -> IO [FilePath]
-findRelativeGreenFilePaths rel = do
-    let dir = if null rel then "." else rel
-    contents <- listDirectory dir
-    fmap concat $ forM contents $ \name -> do
-        let path = dir </> name
-        let relPath = if null rel then name else rel </> name
-        isDir <- doesDirectoryExist path
-        if isDir
-            then findRelativeGreenFilePaths relPath
-            else pure [relPath | takeExtension name == ".green"]
-
 combine :: (b -> c -> d) -> (a -> b) -> (a -> c) -> (a -> d)
 combine (?) f g x = f x ? g x
 
