@@ -19,3 +19,5 @@ tops =
         asdf = fromCompileSuccess . parseTop
     in
         asdf <<$>> sexps
+
+tcheckd :: [Typed Top]

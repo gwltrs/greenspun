@@ -42,12 +42,6 @@ infixr 3 &&&
 (|||) = combine (||)
 infixr 2 |||
 
--- (&&&?) :: (a -> Maybe Bool) -> (a -> Maybe Bool) -> a -> Maybe Bool
--- (&&&?) = combine (liftA2 (||))
-
--- (|||?) :: (a -> Maybe Bool) -> (a -> Maybe Bool) -> a -> Maybe Bool
--- (|||?) = combine (liftA2 (||))
-
 {-# INLINABLE (!?) #-}
 xs !? n
     | n < 0     = Nothing

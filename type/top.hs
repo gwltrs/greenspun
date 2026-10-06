@@ -17,45 +17,17 @@ data PossibleTypes
     | TheseTypes [Sexp] -- Should never be empty
     deriving Show
 
--- instance Semigroup PossibleTypes where
---     AllTypes (<>) AllTypes = AllTypes
---     AllTypes (<>) NonVoidTypes = NonVoidTypes
---     AllTypes (<>) ts@(TheseTypes _) = ts
---     NonVoidTypes (<>) AllTypes = NonVoidTypes
---     NonVoidTypes (<>) NonVoidTypes = NonVoidTypes
---     NonVoidTypes (<>) TheseTypes types = 
---     TheseTypes types (<>) = AllTypes
---     TheseTypes types (<>) = NonVoidTypes 
---     TheseTypes types (<>) = TheseTypes types
-
 data Lit
     = BoolLit Bool
     | IntLit Int
     | StringLit String
     deriving (Show, Eq)
 
--- data littyped
---     = boollittyped bool
---     | intlittyped int sexp
---     | stringlittyped string
---     deriving (Show, Eq)
-
 data Expr
     = CallExpr [Expr]
     | LitExpr Lit
     | VarExpr String
     deriving (Show, Eq)
-
--- data ExprT
---     = CallExprT [Typed Expr]
---     | LitExprT (Typed Lit)
---     | VarExprT (Typed String)
-
--- data ExprTyped
---     = CallExprTyped [Expr] Sexp
---     | LitExprTyped Lit Sexp
---     | VarExprTyped String Sexp
---     deriving (Show, Eq)
 
 data Body
     = FunBody String [(String, Sexp)] Sexp [Body]
