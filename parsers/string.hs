@@ -51,11 +51,6 @@ atom = fmap Atom symbol
 
 sexp :: StringParser Sexp
 sexp = atom <|> list --(Nothing <$ comment) <|> (Just <$> )
-    
-    -- Just <$> (atom <|> list)
-
--- unsafeSexp :: String -> Sexp
--- unsafeSexp s = snd $ fromJust $ runParser sexp s
 
 sexps :: StringParser [Sexp]
 sexps = ws *> (catMaybes <$> manySepBy ws sexpMaybe) <* ws
@@ -70,9 +65,3 @@ comment :: StringParser ()
 comment = char ';' *> (lineComment <|> void sexp)
     where
         lineComment = (void wsNE <|> void (char ';')) *> void (while (/= '\n'))
-
--- lineComment :: StringParser ()
--- lineComment = char ';' *> (void wsNE <|> void (char ';')) *> void (while (/= '\n'))
-
--- sexpComment :: StringParser ()
--- sexpComment = char ';' *> void sexp
