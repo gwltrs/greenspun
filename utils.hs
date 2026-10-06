@@ -102,3 +102,7 @@ rightToMaybe (Right b) = Just b
 
 upTo :: Int -> [Int]
 upTo i = [0 .. (i - 1)]
+
+fromRight :: Either a b -> b
+fromRight (Left _) = error "fromRight: found Left when expecting Right"
+fromRight (Right b) = b
