@@ -1,0 +1,3 @@
+# REPL
+
+The .ghci and prettyghci.hs files are setup up so that only ```ghci``` is required for playing with the repl
