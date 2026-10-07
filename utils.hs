@@ -100,3 +100,7 @@ upTo i = [0 .. (i - 1)]
 fromRight :: Either a b -> b
 fromRight (Left _) = error "fromRight: found Left when expecting Right"
 fromRight (Right b) = b
+
+fromSingle :: [a] -> Maybe a
+fromSingle [a] = Just a
+fromSingle _ = Nothing

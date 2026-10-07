@@ -22,12 +22,12 @@ import Data.Bifunctor (second)
 import Data.Char (ord)
 import Transpile
 import TypeCheck
-import IO (greenFilesSexps)
+import IO (greenFileSexps)
 import Repl
 
 main :: IO ()
 main = do
-    sexpsM <- greenFilesSexps
+    sexpsM <- greenFileSexps
     case sexpsM of
         Nothing -> putStrLn "Compilation Error 1"
         Just sexps ->
