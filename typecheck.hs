@@ -9,9 +9,10 @@ import Data.List (intersect, union, nub)
 import Prelude hiding (lookup)
 import Data.Foldable hiding (length)
 import Utils ((<<$>>), mapListWithIndex, rightToMaybe, upTo)
-import Type.Top (PossibleTypes(..))
+import Type.Top
 import Data.Functor ((<&>))
 import Data.Function ((&))
+import Control.Monad (when)
 
 data TypeCheckError 
     = ExpectedXsButGotYsError PossibleTypes PossibleTypes
@@ -22,29 +23,26 @@ data TypeCheckError
     | NoFunctionWithThoseArgTypesError String
     | AmbiguousFunctionOverloadError String 
 
-typeCheckLit :: Lit -> Typed Lit
-typeCheckLit b@(BoolLit _) = Typed (TheseTypes [Atom "Bool"], b)
-typeCheckLit i@(IntLit _) = Typed (TheseTypes [Atom "Int"], i)
-typeCheckLit s@(StringLit _) = Typed (TheseTypes [List [Atom "*", Atom "Char"]], s)
+typeCheckLit :: Lit () -> Lit PossibleTypes
+typeCheckLit (BoolLit () b) = BoolLit (TheseTypes [Atom "Bool"]) b
+typeCheckLit (IntLit () i) = IntLit (TheseTypes [Atom "Int"]) i
+typeCheckLit (StringLit () s) = StringLit (TheseTypes [List [Atom "*", Atom "Char"]]) s
 
-typeCheckLit' :: PossibleTypes -> Lit -> Either TypeCheckError (Typed Lit)
-typeCheckLit' expected = applyExpectedTypesToTyped expected . typeCheckLit
-
-typeCheckVar :: Env -> PossibleTypes -> String -> Either TypeCheckError (Typed String)
+typeCheckVar :: Env -> PossibleTypes -> String -> Either TypeCheckError (PossibleTypes, String)
 typeCheckVar (Env map) expectedTypes varName = 
     case allEntries <$> lookup varName map of
         Nothing -> Left $ NoValueWithNameError varName
-        Just allEntries' -> applyExpectedTypesToTyped expectedTypes (Typed (TheseTypes allEntries', varName)) 
+        Just allEntries' -> (, varName) <$> intersectPossibleTypes expectedTypes (TheseTypes allEntries')
 
-typeCheckCall :: Env -> PossibleTypes -> [Expr] -> Either TypeCheckError (Typed [Expr])
-typeCheckCall (Env map) _ ((LitExpr l) : args) = Left $ CallMadeWithNonFunctionType $ getType $ typeCheckLit l
+typeCheckCall :: Env -> PossibleTypes -> [Expr ()] -> Either TypeCheckError [Expr PossibleTypes]
+typeCheckCall (Env map) _ ((LitExpr l) : args) = Left $ CallMadeWithNonFunctionType $ getOneReturnType $ typeCheckLit l
 typeCheckCall (Env map) _ (callExpr@(CallExpr funName) : args) = error "typeCheckCall: haven't implemented call typechecking when the function is produced by a function call"
-typeCheckCall env@(Env map) expectedReturnType ve@((VarExpr v) : args) =
+typeCheckCall env@(Env map) expectedReturnType ve@((VarExpr () v) : args) = 
     case lookup v map of
         Nothing -> Left $ NoValueWithNameError v
         Just (VarEntry sexp) -> Left $ CallMadeWithNonFunctionType sexp
         Just (FunsEntry sexps) -> 
-            let 
+            let
                 funsWithMatchingArity :: [Sexp]
                 funsWithMatchingArity = filter (\s -> arity s == Just (length args)) sexps
                 filterBasedOnReturnType :: PossibleTypes -> (Sexp -> Bool)
@@ -55,7 +53,11 @@ typeCheckCall env@(Env map) expectedReturnType ve@((VarExpr v) : args) =
                 funsWithMatchingReturnType = filter (filterBasedOnReturnType expectedReturnType) funsWithMatchingArity
             in case funsWithMatchingReturnType of
                 [] -> Left $ NoFunctionWithThatArityOrReturnType v
-                [exactMatch] -> Right $ Typed (TheseTypes [fromJust $ returnType exactMatch], ve)
+                -- [exactMatch] -> Right $ Typed (TheseTypes [fromJust $ returnType exactMatch], ve)
+                [exactMatch] -> Right (TheseTypes [fromJust $ returnType exactMatch], ve)
+
+{-
+            
                 (possibleMatches :: [Sexp]) -> 
                     let 
                         typedArgs :: [Either TypeCheckError (Typed Expr)]
@@ -100,10 +102,18 @@ filterNonSevere rows =
     in 
         sequence rows' 
 
-typeCheckExpr :: Env -> PossibleTypes -> Expr -> Either TypeCheckError (Typed Expr)
 typeCheckExpr _ expected (LitExpr lit) = LitExpr <<$>> typeCheckLit' expected lit
 typeCheckExpr env expected (VarExpr varName) = VarExpr <<$>> typeCheckVar env expected varName
 typeCheckExpr env expected (CallExpr call) = CallExpr <<$>> typeCheckCall env expected call
+
+-}
+
+typeCheckExpr :: Env -> PossibleTypes -> Expr () -> Either TypeCheckError (Expr PossibleTypes)
+typeCheckExpr _ expected (LitExpr lit) = Right $ LitExpr $ typeCheckLit lit
+typeCheckExpr env expected (VarExpr () varName) = 
+    case typeCheckVar env expected varName of
+        Left err -> Left err
+        Right (type_, varName') -> Right $ VarExpr type_ varName'
 
 intersectPossibleTypes :: PossibleTypes -> PossibleTypes -> Either TypeCheckError PossibleTypes
 intersectPossibleTypes AllTypes r = Right r
@@ -118,8 +128,14 @@ intersectPossibleTypes l'@(TheseTypes l) r'@(TheseTypes r) =
         [] -> Left $ ExpectedXsButGotYsError l' r'
         valids -> Right $ TheseTypes valids
 
-applyExpectedTypesToTyped :: PossibleTypes -> Typed a -> Either TypeCheckError (Typed a)
-applyExpectedTypesToTyped expected (Typed (actual, a)) = 
-    case intersectPossibleTypes expected actual of
-        Left error -> Left error
-        Right types -> Right $ Typed (types, a)
+-- class Typeable t a where
+
+-- applyExpectedTypes :: PossibleTypes -> (PossibleTypes, a) -> Either TypeCheckError (PossibleTypes, a)
+-- applyExpectedTypes expected (actual, a) =
+--     case intersectPossibleTypes expected actual of
+--         Left err -> undefined
+--         Right types -> undefined
+        
+    -- case intersectPossibleTypes expected actual of
+    --     Left error -> Left error
+    --     Right types -> Right $ Typed (types, a)

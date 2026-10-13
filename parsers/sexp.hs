@@ -15,14 +15,14 @@ import Data.Maybe
 import Data.Function ((&))
 import Control.Monad (mfilter, join, foldM)
 
-envEntryFromTop :: Top -> Maybe [(String, EnvEntry)]
+envEntryFromTop :: Top a -> Maybe [(String, EnvEntry)]
 envEntryFromTop (FunTop name params returnType body) = 
     let type_ = List ([Atom "Fun"] ++ (snd <$> params) ++ [returnType])
     in Just [(name, envEntryFromSexp type_)]
 envEntryFromTop (VarTop names type_ values) = Just $ (\n -> (n, envEntryFromSexp type_)) <$> names
 envEntryFromTop (IncludeTop _) = Nothing
 
-envFromTops :: [Top] -> Either (String, EnvEntry, EnvEntry) Env
+envFromTops :: [Top a] -> Either (String, EnvEntry, EnvEntry) Env
 envFromTops tops =
     let 
         entries :: [(String, EnvEntry)]
@@ -46,25 +46,25 @@ globalEnv ss = undefined
     -- else
     --     Nothing
 
-parseTop :: Sexp -> CompileResult Top
+parseTop :: Sexp -> CompileResult (Top ())
 parseTop s = (uncurry4 FunTop <$> parseFun s)
     <|> (uncurry3 VarTop <$> parseVar s)
     <|> (IncludeTop <$> parseInclude s)
 
-parseLit :: Sexp -> CompileResult Lit
-parseLit (Atom "true") = pure $ BoolLit True
-parseLit (Atom "false") = pure $ BoolLit False
-parseLit (Atom ('"' : rest)) = pure $ StringLit $ init rest
+parseLit :: Sexp -> CompileResult (Lit ())
+parseLit (Atom "true") = pure $ BoolLit () True
+parseLit (Atom "false") = pure $ BoolLit () False
+parseLit (Atom ('"' : rest)) = pure $ StringLit () $ init rest
 parseLit (Atom numText) =
     if (isNum ||| (== '-')) $ head numText
     then
         if all isNum (drop 1 numText)
-        then pure $ IntLit (read numText :: Int)
+        then pure $ IntLit () (read numText :: Int)
         else failCompile InvalidIntegerLiteralError
     else empty
 parseLit (List _) = CompileResult $ Right Nothing
 
-parseCall :: Sexp -> CompileResult [Expr]
+parseCall :: Sexp -> CompileResult [Expr ()]
 parseCall (Atom _) = empty
 parseCall (List []) = empty
 parseCall (List exprs) = traverse parseExpr exprs
@@ -73,11 +73,11 @@ parseIdentifier :: Sexp -> CompileResult String
 parseIdentifier (Atom a) = pure a
 parseIdentifier _ = empty
 
-parseExpr :: Sexp -> CompileResult Expr
+parseExpr :: Sexp -> CompileResult (Expr ())
 parseExpr s = 
     (CallExpr <$> parseCall s) 
         <|> (LitExpr <$> parseLit s)
-        <|> (VarExpr <$> parseIdentifier s)
+        <|> (VarExpr () <$> parseIdentifier s)
 
 parseInclude :: Sexp -> CompileResult [String]
 parseInclude (List (Atom "include" : includes)) = 
@@ -92,7 +92,7 @@ parseInclude (List (Atom "include" : includes)) =
             Just includes' -> pure includes'
 parseInclude _ = empty
 
-parseFun :: Sexp -> CompileResult (String, [(String, Sexp)], Sexp, [Body])
+parseFun :: Sexp -> CompileResult (String, [(String, Sexp)], Sexp, [Body ()])
 parseFun (Atom _) = empty
 parseFun (List ((Atom "fun") : (Atom name) : (List args) : rest))
     | odd $ length args = failCompile ParamSexpsArentEvenError
@@ -108,20 +108,20 @@ parseFun (List ((Atom "fun") : (Atom name) : (List args) : rest))
 parseFun (List (Atom "fun" : _)) = failCompile FoundFunButNoNameAtomAndParamsListError
 parseFun _ = empty
 
-parseRet :: Sexp -> CompileResult (Maybe Expr)
+parseRet :: Sexp -> CompileResult (Maybe (Expr ()))
 parseRet (List [Atom "return", expr]) = Just <$> parseExpr expr
 parseRet (List [Atom "return"]) = pure Nothing
 parseRet _ = empty
 
-parseVar :: Sexp -> CompileResult ([String], Sexp, [Maybe Expr])
+parseVar :: Sexp -> CompileResult ([String], Sexp, [Maybe (Expr ())])
 parseVar (Atom _) = empty
 parseVar (List (Atom "var" : rest)) =
     let 
-        finalizeExprs :: Int -> [Maybe Expr] -> CompileResult [Maybe Expr]
+        finalizeExprs :: Int -> [Maybe (Expr ())] -> CompileResult [Maybe (Expr ())]
         finalizeExprs namesLen valueExprs_ =
             let valLen = length valueExprs_ in
             if valLen == 0 then
-                pure $ replicate namesLen (Just $ CallExpr [VarExpr "init"])
+                pure $ replicate namesLen (Just $ CallExpr [VarExpr () "init"])
             else if valLen == namesLen then
                 pure valueExprs_
             else if valLen == 1 then
@@ -130,12 +130,12 @@ parseVar (List (Atom "var" : rest)) =
                 failCompile InvalidNumberOfVarValuesError
     in do
         (names :: [String]) <- elseCompileError InvalidVarNamesError (flatNotEmptyAtoms $ head rest)
-        (valueExprs :: [Maybe Expr]) <- traverse (allowNil parseExpr) (drop 2 rest)
-        (valueExprs2 :: [Maybe Expr]) <- finalizeExprs (length names) valueExprs
+        (valueExprs :: [Maybe (Expr a)]) <- traverse (allowNil parseExpr) (drop 2 rest)
+        (valueExprs2 :: [Maybe (Expr a)]) <- finalizeExprs (length names) valueExprs
         pure (names, rest !! 1, valueExprs2)
 parseVar _ = empty
 
-parseIf :: Sexp -> CompileResult ([(Expr, [Body])], Maybe [Body])
+parseIf :: Sexp -> CompileResult ([(Expr (), [Body ()])], Maybe [Body ()])
 parseIf (Atom _) = empty
 parseIf (List [Atom "if"]) = failCompile EmptyIfStatementError
 parseIf (List sexps@(Atom "if" : _)) = 
@@ -152,9 +152,9 @@ parseIf (List sexps@(Atom "if" : _)) =
 parseIf _ = empty
 
 data IfChunk
-    = If (Expr, [Body])
-    | ElseIf (Expr, [Body])
-    | Else [Body]
+    = If (Expr (), [Body ()])
+    | ElseIf (Expr (), [Body ()])
+    | Else [Body ()]
     deriving (Show, Eq)
 
 isIfChunk :: IfChunk -> Bool
@@ -169,12 +169,12 @@ isElseChunk :: IfChunk -> Bool
 isElseChunk (Else _) = True
 isElseChunk _ = False
 
-fromCondChunk :: IfChunk -> (Expr, [Body])
+fromCondChunk :: IfChunk -> (Expr (), [Body ()])
 fromCondChunk (If t) = t
 fromCondChunk (ElseIf t) = t
 fromCondChunk _ = nonEx "fromCondChunk"
 
-fromElseChunk :: IfChunk -> [Body]
+fromElseChunk :: IfChunk -> [Body ()]
 fromElseChunk (Else b) = b
 fromElseChunk _ = nonEx "fromElseChunk"
 
@@ -196,7 +196,7 @@ allowNil parser sexp = if sexp == List [] then pure Nothing else Just <$> parser
 -- pure Nothing
 -- allowNothing f s = Just <$> f s
 
-parseFor :: Sexp -> CompileResult (Maybe Stat, Maybe Expr, Maybe Stat, [Body])
+parseFor :: Sexp -> CompileResult (Maybe (Stat ()), Maybe (Expr ()), Maybe (Stat ()), [Body ()])
 parseFor (Atom _) = empty
 parseFor (List (Atom "for" : rest)) = 
     if length rest < 3 then failCompile ForLoopTooFewSexpsError else
@@ -209,7 +209,7 @@ parseFor (List (Atom "for" : rest)) =
         (,,,) <$> init <*> cond <*> update <*> body
 parseFor _ = empty
 
-parseBody :: Sexp -> CompileResult Body
+parseBody :: Sexp -> CompileResult (Body ())
 parseBody s = 
     (uncurry4 FunBody <$> parseFun s)
     <|> (RetBody <$> parseRet s)
@@ -218,7 +218,7 @@ parseBody s =
     <|> (uncurry4 ForBody <$> parseFor s)
     <|> (CallBody <$> parseCall s)
 
-parseStat :: Sexp -> CompileResult Stat
+parseStat :: Sexp -> CompileResult (Stat ())
 parseStat s = 
     (uncurry3 VarStat <$> parseVar s)
     <|> (CallStat <$> parseCall s)

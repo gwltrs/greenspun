@@ -30,13 +30,13 @@ sexps name = do
             then pure sexps'
             else error ("Parsed sexps, but found text remaining: " ++ remainingText)
 
-tops :: String -> IO [Top]
+tops :: String -> IO [Top ()]
 tops name = do
     (sexps' :: [Sexp]) <- sexps name
-    ((CompileResult res) :: CompileResult [Top]) <- pure $ mapM parseTop sexps'
+    ((CompileResult res) :: CompileResult [Top ()]) <- pure $ mapM parseTop sexps'
     case res of
         Left (errs :: [CompileError]) -> error ("Failed to parse tops with errors: " ++ (unlines $ show <$> errs))
-        Right (tops' :: Maybe [Top]) -> 
+        Right (tops' :: Maybe [Top ()]) -> 
             case tops' of
                 Nothing -> error "Failed to find tops to parse"
-                Just (tops'' :: [Top]) -> pure tops''
+                Just (tops'' :: [Top ()]) -> pure tops''

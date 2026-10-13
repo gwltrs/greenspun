@@ -8,6 +8,9 @@ import Data.Maybe (fromMaybe)
 import Data.Bifunctor (second)
 import Data.Char (ord)
 
+transpileAll :: [Top a] -> String
+transpileAll tops = undefined -- unlines $ transpileTop <$> tops
+
 transpileType :: Sexp -> String
 transpileType (Atom "Void") = "void"
 transpileType (Atom "Bool") = "bool"
@@ -17,6 +20,8 @@ transpileType (Atom "F32") = "float"
 transpileType (Atom t) = t
 transpileType (List [Atom "*", inner]) = transpileType inner ++ "*"
 -- transpileType (List [Atom "->", inner]) = 
+
+{-
 
 transpileTop :: Top -> String
 transpileTop (FunTop name args returnType body) = transpileFun (name, args, returnType, body)
@@ -139,3 +144,5 @@ mangleChar c =
         [c]
     else
         "_" ++ (show $ ord c)
+
+-}
