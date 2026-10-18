@@ -5,7 +5,7 @@ import Type.Sexp
 import Type.Env
 import Data.Map (lookup)
 import Data.Maybe (fromMaybe, fromJust, mapMaybe)
-import Data.List (intersect, union, nub)
+import Data.List (intersect, union, nub, singleton)
 import Prelude hiding (lookup)
 import Data.Foldable hiding (length)
 import Utils ((<<$>>), mapListWithIndex, rightToMaybe, upTo)
@@ -13,6 +13,7 @@ import Type.Top
 import Data.Functor ((<&>))
 import Data.Function ((&))
 import Control.Monad (when)
+import Type.Top (applyFunctionTypeToCall)
 
 data TypeCheckError 
     = ExpectedXsButGotYsError PossibleTypes PossibleTypes
@@ -37,9 +38,9 @@ typeCheckVar (Env map) expectedTypes varName =
 typeCheckCall :: Env -> PossibleTypes -> [Expr ()] -> Either TypeCheckError [Expr PossibleTypes]
 typeCheckCall (Env map) _ ((LitExpr l) : args) = Left $ CallMadeWithNonFunctionType $ getOneReturnType $ typeCheckLit l
 typeCheckCall (Env map) _ (callExpr@(CallExpr funName) : args) = error "typeCheckCall: haven't implemented call typechecking when the function is produced by a function call"
-typeCheckCall env@(Env map) expectedReturnType ve@((VarExpr () v) : args) = 
-    case lookup v map of
-        Nothing -> Left $ NoValueWithNameError v
+typeCheckCall env@(Env map) expectedReturnType ve@((VarExpr () funName) : args) = 
+    case lookup funName map of
+        Nothing -> Left $ NoValueWithNameError funName
         Just (VarEntry sexp) -> Left $ CallMadeWithNonFunctionType sexp
         Just (FunsEntry sexps) -> 
             let
@@ -52,43 +53,43 @@ typeCheckCall env@(Env map) expectedReturnType ve@((VarExpr () v) : args) =
                 funsWithMatchingReturnType :: [Sexp]
                 funsWithMatchingReturnType = filter (filterBasedOnReturnType expectedReturnType) funsWithMatchingArity
             in case funsWithMatchingReturnType of
-                [] -> Left $ NoFunctionWithThatArityOrReturnType v
+                [] -> Left $ NoFunctionWithThatArityOrReturnType funName
                 -- [exactMatch] -> Right $ Typed (TheseTypes [fromJust $ returnType exactMatch], ve)
-                [exactMatch] -> Right (TheseTypes [fromJust $ returnType exactMatch], ve)
-
-{-
-            
+                -- Right (TheseTypes [fromJust $ returnType exactMatch], ve)
+                [exactMatch :: Sexp] -> Right $ (TheseTypes . singleton) <<$>> applyFunctionTypeToCall exactMatch ve
                 (possibleMatches :: [Sexp]) -> 
                     let 
-                        typedArgs :: [Either TypeCheckError (Typed Expr)]
+                        typedArgs :: [Either TypeCheckError (Expr PossibleTypes)]
                         typedArgs = args & mapListWithIndex (\i arg -> 
                             let 
                                 expectedTypes :: PossibleTypes
-                                expectedTypes = TheseTypes $ nub $ argAtIndex i <$> possibleMatches
+                                expectedTypes = TheseTypes $ nub $ funTypeAtIndex i <$> possibleMatches
                             in 
                                 typeCheckExpr env expectedTypes arg)
                     in
                         case sequence typedArgs of
                             Left error -> Left error
-                            Right (typedArgs' :: [Typed Expr]) -> 
+                            Right (typedArgs' :: [Expr PossibleTypes]) -> 
                                 let 
-                                    paramAndArgMatch :: Sexp -> Typed Expr -> Bool
-                                    paramAndArgMatch s (Typed (possibleTypes, expr)) = 
-                                        either (const False) (const True) $ intersectPossibleTypes (TheseTypes [s]) possibleTypes
+                                    paramAndArgMatch :: Sexp -> Expr PossibleTypes -> Bool
+                                    paramAndArgMatch s e = 
+                                        either (const False) (const True) $ intersectPossibleTypes (TheseTypes [s]) (getReturnType e)
                                     filterPossibleMatchesByArgType :: Sexp -> Bool
                                     filterPossibleMatchesByArgType param = 
                                         let
                                             argValidations :: [Bool]
-                                            -- argValidations = typedArgs' <$> (\ta -> paramAndArgMatch  ta)
                                             argValidations = upTo (length typedArgs') 
-                                                <&> (\i -> paramAndArgMatch (argAtIndex i param) (typedArgs' !! i))
+                                                <&> (\i -> paramAndArgMatch (funTypeAtIndex i param) (typedArgs' !! i))
                                         in
                                             and argValidations
                                 in
                                     case filter filterPossibleMatchesByArgType possibleMatches of
-                                        [] -> Left $ NoFunctionWithThoseArgTypesError v
-                                        [exactMatch'] -> Right $ Typed (TheseTypes [fromJust $ returnType exactMatch'], ve)
-                                        possibleMatches' -> Left $ AmbiguousFunctionOverloadError v
+                                        [] -> Left $ NoFunctionWithThoseArgTypesError funName
+                                        [exactMatch' :: Sexp] -> Right $ (TheseTypes . singleton) <<$>> applyFunctionTypeToCall exactMatch' ve
+                                        possibleMatches' -> Left $ AmbiguousFunctionOverloadError funName
+
+{-
+                                    
 
 filterNonSevere :: [[Either TypeCheckError (Typed Expr)]] -> Either TypeCheckError [[Typed Expr]]
 filterNonSevere rows = 
@@ -114,6 +115,7 @@ typeCheckExpr env expected (VarExpr () varName) =
     case typeCheckVar env expected varName of
         Left err -> Left err
         Right (type_, varName') -> Right $ VarExpr type_ varName'
+typeCheckExpr env expected (CallExpr exprs) = CallExpr <$> typeCheckCall env expected exprs
 
 intersectPossibleTypes :: PossibleTypes -> PossibleTypes -> Either TypeCheckError PossibleTypes
 intersectPossibleTypes AllTypes r = Right r

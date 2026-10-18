@@ -3,6 +3,7 @@
 module Type.Top where
 
 import Type.Sexp
+import Utils
 
 -- newtype Typed a = Typed (PossibleTypes, a) deriving Show
 
@@ -22,7 +23,7 @@ data Expr a
     = CallExpr [Expr a]
     | LitExpr (Lit a)
     | VarExpr a String
-    deriving (Show, Eq)
+    deriving (Show, Eq, Functor)
 
 data Body a
     = FunBody String [(String, Sexp)] Sexp [Body a]
@@ -46,6 +47,7 @@ data Top a
 
 class (Typeable t a) where
     getReturnType :: t a -> a
+    setReturnType :: b -> t a -> t b
 
 getTheseReturnTypes :: forall t. Typeable t PossibleTypes => t PossibleTypes -> [Sexp]
 getTheseReturnTypes t =
@@ -63,12 +65,25 @@ getOneReturnType t =
         (TheseTypes [t]) -> t
         (TheseTypes _) -> error "getTheseTypes: found TheseTypes with multiple types"
 
+applyFunctionTypeToCall :: Sexp -> [Expr ()] -> [Expr Sexp]
+applyFunctionTypeToCall funType@(List (Atom "->" : types)) ((VarExpr () varName) : argExprs) = 
+    let 
+        mapArg :: Int -> Expr () -> Expr Sexp
+        mapArg i (VarExpr () v) = VarExpr (types !! i) v
+        mapArg i l@(LitExpr _) = types !! i <$ l
+        mapArg i (CallExpr _) = error "applyFunctionTypeToCall: recursive application not yet implemented"
+    in
+        VarExpr funType varName : mapListWithIndex mapArg argExprs
+applyFunctionTypeToCall _ _ = nonEx "applyFunctionTypeToCall"
+
 instance Typeable Lit a where
     getReturnType (BoolLit a _) = a
     getReturnType (IntLit a _) = a
     getReturnType (StringLit a _) = a
+    setReturnType = undefined
 
 instance Typeable Expr a where
-    getReturnType (CallExpr list) = getReturnType $ last list
+    getReturnType (CallExpr list) = undefined -- _a $ head list -- getReturnType $ last list
     getReturnType (LitExpr lit) = getReturnType lit
     getReturnType (VarExpr a _) = a
+    setReturnType = undefined
