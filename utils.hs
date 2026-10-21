@@ -9,6 +9,7 @@ import System.Directory (listDirectory, getCurrentDirectory, doesDirectoryExist)
 import System.FilePath (takeExtension, (</>))
 import Data.List (isSuffixOf)
 import Debug.Trace
+import MaybeT
 
 isLower :: Char -> Bool
 isLower c = 97 <= ord c && ord c <= 122
@@ -104,3 +105,15 @@ fromRight (Right b) = b
 fromSingle :: [a] -> Maybe a
 fromSingle [a] = Just a
 fromSingle _ = Nothing
+
+sequenceMaybes :: forall m n a. Traversable m => Monad m => Monad n => m (Maybe (n a)) -> n (m (Maybe a))
+sequenceMaybes maybes = 
+    -- let
+    --     a :: MaybeT m (n a)
+    --     a = MaybeT maybes
+    --     b :: n (MaybeT m a)
+    --     b = sequence a
+    --     c :: n (m (Maybe a)) 
+    --     c = runMaybeT <$> b
+    -- in    
+        runMaybeT <$> sequence (MaybeT maybes)

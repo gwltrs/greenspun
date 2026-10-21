@@ -8,12 +8,14 @@ import Data.Maybe (fromMaybe, fromJust, mapMaybe)
 import Data.List (intersect, union, nub, singleton)
 import Prelude hiding (lookup)
 import Data.Foldable hiding (length)
-import Utils ((<<$>>), mapListWithIndex, rightToMaybe, upTo)
+import Utils ((<<$>>), mapListWithIndex, rightToMaybe, upTo, sequenceMaybes)
 import Type.Top
 import Data.Functor ((<&>))
 import Data.Function ((&))
 import Control.Monad (when)
 import Type.Top (applyFunctionTypeToCall)
+import ListT
+import MaybeT
 
 data TypeCheckError 
     = ExpectedXsButGotYsError PossibleTypes PossibleTypes
@@ -88,8 +90,29 @@ typeCheckCall env@(Env map) expectedReturnType ve@((VarExpr () funName) : args) 
                                         [exactMatch' :: Sexp] -> Right $ (TheseTypes . singleton) <<$>> applyFunctionTypeToCall exactMatch' ve
                                         possibleMatches' -> Left $ AmbiguousFunctionOverloadError funName
 
+typeCheckExpr :: Env -> PossibleTypes -> Expr () -> Either TypeCheckError (Expr PossibleTypes)
+typeCheckExpr _ expected (LitExpr lit) = Right $ LitExpr $ typeCheckLit lit
+typeCheckExpr env expected (VarExpr () varName) = 
+    case typeCheckVar env expected varName of
+        Left err -> Left err
+        Right (type_, varName') -> Right $ VarExpr type_ varName'
+typeCheckExpr env expected (CallExpr exprs) = CallExpr <$> typeCheckCall env expected exprs
+
+typeCheckTop :: Env -> Top () -> Either TypeCheckError (Top PossibleTypes)
+typeCheckTop _ (IncludeTop includes) = Right $ IncludeTop includes
+typeCheckTop env (FunTop funName args retType body) = undefined -- String [(String, Sexp)] Sexp [Body a]
+typeCheckTop env (VarTop varNames varType varExprs) = 
+    let 
+        typedVarExprs :: [Maybe (Either TypeCheckError (Expr PossibleTypes))]
+        typedVarExprs = typeCheckExpr env (TheseTypes [varType]) <<$>> varExprs
+        typedVarExprs' :: Either TypeCheckError [Maybe (Expr PossibleTypes)]
+        typedVarExprs' = sequenceMaybes typedVarExprs
+    in 
+        case typedVarExprs' of
+            Left err -> Left err
+            Right typedVarExprs''  -> Right $ VarTop varNames varType typedVarExprs''
+
 {-
-                                    
 
 filterNonSevere :: [[Either TypeCheckError (Typed Expr)]] -> Either TypeCheckError [[Typed Expr]]
 filterNonSevere rows = 
@@ -109,13 +132,6 @@ typeCheckExpr env expected (CallExpr call) = CallExpr <<$>> typeCheckCall env ex
 
 -}
 
-typeCheckExpr :: Env -> PossibleTypes -> Expr () -> Either TypeCheckError (Expr PossibleTypes)
-typeCheckExpr _ expected (LitExpr lit) = Right $ LitExpr $ typeCheckLit lit
-typeCheckExpr env expected (VarExpr () varName) = 
-    case typeCheckVar env expected varName of
-        Left err -> Left err
-        Right (type_, varName') -> Right $ VarExpr type_ varName'
-typeCheckExpr env expected (CallExpr exprs) = CallExpr <$> typeCheckCall env expected exprs
 
 intersectPossibleTypes :: PossibleTypes -> PossibleTypes -> Either TypeCheckError PossibleTypes
 intersectPossibleTypes AllTypes r = Right r

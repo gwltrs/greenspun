@@ -4,7 +4,7 @@ import Prelude hiding (read)
 import IO (fileNameSexps, greenFileSexps, findRelativeGreenFilePaths, findGreenFilePathByName)
 import System.IO (readFile)
 import Type.Sexp (Sexp)
-import Type.Top (Top)
+import Type.Top (Top, PossibleTypes)
 import Type.Parser.String (runParser)
 import Data.Maybe (fromJust)
 import Utils ((<<$>>), fromRight)
@@ -40,3 +40,6 @@ tops name = do
             case tops' of
                 Nothing -> error "Failed to find tops to parse"
                 Just (tops'' :: [Top ()]) -> pure tops''
+
+ttops :: String -> IO [Top PossibleTypes]
+ttops name = undefined
