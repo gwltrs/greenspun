@@ -98,12 +98,8 @@ typeCheckExpr env expected (VarExpr () varName) =
         Right (type_, varName') -> Right $ VarExpr type_ varName'
 typeCheckExpr env expected (CallExpr exprs) = CallExpr <$> typeCheckCall env expected exprs
 
-typeCheckVarDef :: Env -> PossibleTypes -> VarDef () -> Either TypeCheckError (VarDef PossibleTypes)
-typeCheckVarDef env expectedTypes var = undefined
-
-typeCheckTop :: Env -> Top () -> Either TypeCheckError (Top PossibleTypes)
-typeCheckTop _ (IncludeTop includes) = Right $ IncludeTop includes
-typeCheckTop env (VarTop (VarDef varNames varType varExprs)) = 
+typeCheckVarDef :: Env -> VarDef () -> Either TypeCheckError (VarDef PossibleTypes)
+typeCheckVarDef env (VarDef varNames varType varExprs) = 
     let 
         typedVarExprs :: [Maybe (Either TypeCheckError (Expr PossibleTypes))]
         typedVarExprs = typeCheckExpr env (TheseTypes [varType]) <<$>> varExprs
@@ -112,11 +108,23 @@ typeCheckTop env (VarTop (VarDef varNames varType varExprs)) =
     in 
         case typedVarExprs' of
             Left err -> Left err
-            Right typedVarExprs'' -> Right $ VarTop (VarDef varNames varType typedVarExprs'')
+            Right typedVarExprs'' -> Right $ VarDef varNames varType typedVarExprs''
+
+typeCheckBody :: Env -> Sexp -> Body () -> Either TypeCheckError (Body PossibleTypes)
+typeCheckBody env returnType (FunBody _ _ _ _) = undefined
+typeCheckBody env returnType (RetBody _) = undefined
+typeCheckBody env returnType (VarBody varDef) = VarBody <$> typeCheckVarDef env varDef
+typeCheckBody env returnType (IfBody _ _) = undefined
+typeCheckBody env returnType (ForBody _ _ _ _) = undefined
+typeCheckBody env returnType (CallBody _) = undefined
+
+typeCheckTop :: Env -> Top () -> Either TypeCheckError (Top PossibleTypes)
+typeCheckTop _ (IncludeTop includes) = Right $ IncludeTop includes
+typeCheckTop env (VarTop varDef) = VarTop <$> typeCheckVarDef env varDef
 typeCheckTop env (FunTop funName args retType body) = undefined -- String [(String, Sexp)] Sexp [Body a]
 
-typeCheckStat :: Env -> Stat () -> Either TypeCheckError (Top PossibleTypes)
-typeCheckStat _ (VarStat vd) = undefined
+typeCheckStat :: Env -> Stat () -> Either TypeCheckError (Stat PossibleTypes)
+typeCheckStat env (VarStat varDef) = VarStat <$> typeCheckVarDef env varDef
 typeCheckStat _ (CallStat exprs) = undefined
 
 -- data Stat a
@@ -143,7 +151,6 @@ typeCheckExpr env expected (VarExpr varName) = VarExpr <<$>> typeCheckVar env ex
 typeCheckExpr env expected (CallExpr call) = CallExpr <<$>> typeCheckCall env expected call
 
 -}
-
 
 intersectPossibleTypes :: PossibleTypes -> PossibleTypes -> Either TypeCheckError PossibleTypes
 intersectPossibleTypes AllTypes r = Right r
