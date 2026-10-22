@@ -107,13 +107,4 @@ fromSingle [a] = Just a
 fromSingle _ = Nothing
 
 sequenceMaybes :: forall m n a. Traversable m => Monad m => Monad n => m (Maybe (n a)) -> n (m (Maybe a))
-sequenceMaybes maybes = 
-    -- let
-    --     a :: MaybeT m (n a)
-    --     a = MaybeT maybes
-    --     b :: n (MaybeT m a)
-    --     b = sequence a
-    --     c :: n (m (Maybe a)) 
-    --     c = runMaybeT <$> b
-    -- in    
-        runMaybeT <$> sequence (MaybeT maybes)
+sequenceMaybes maybes = runMaybeT <$> sequence (MaybeT maybes)

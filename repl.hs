@@ -41,5 +41,5 @@ tops name = do
                 Nothing -> error "Failed to find tops to parse"
                 Just (tops'' :: [Top ()]) -> pure tops''
 
-ttops :: String -> IO [Top PossibleTypes]
-ttops name = undefined
+typedTops :: String -> IO [Top PossibleTypes]
+typedTops name = undefined

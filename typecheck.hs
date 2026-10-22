@@ -31,8 +31,8 @@ typeCheckLit (BoolLit () b) = BoolLit (TheseTypes [Atom "Bool"]) b
 typeCheckLit (IntLit () i) = IntLit (TheseTypes [Atom "Int"]) i
 typeCheckLit (StringLit () s) = StringLit (TheseTypes [List [Atom "*", Atom "Char"]]) s
 
-typeCheckVar :: Env -> PossibleTypes -> String -> Either TypeCheckError (PossibleTypes, String)
-typeCheckVar (Env map) expectedTypes varName = 
+typeCheckVarExpr :: Env -> PossibleTypes -> String -> Either TypeCheckError (PossibleTypes, String)
+typeCheckVarExpr (Env map) expectedTypes varName = 
     case allEntries <$> lookup varName map of
         Nothing -> Left $ NoValueWithNameError varName
         Just allEntries' -> (, varName) <$> intersectPossibleTypes expectedTypes (TheseTypes allEntries')
@@ -93,15 +93,17 @@ typeCheckCall env@(Env map) expectedReturnType ve@((VarExpr () funName) : args) 
 typeCheckExpr :: Env -> PossibleTypes -> Expr () -> Either TypeCheckError (Expr PossibleTypes)
 typeCheckExpr _ expected (LitExpr lit) = Right $ LitExpr $ typeCheckLit lit
 typeCheckExpr env expected (VarExpr () varName) = 
-    case typeCheckVar env expected varName of
+    case typeCheckVarExpr env expected varName of
         Left err -> Left err
         Right (type_, varName') -> Right $ VarExpr type_ varName'
 typeCheckExpr env expected (CallExpr exprs) = CallExpr <$> typeCheckCall env expected exprs
 
+typeCheckVarDef :: Env -> PossibleTypes -> VarDef () -> Either TypeCheckError (VarDef PossibleTypes)
+typeCheckVarDef env expectedTypes var = undefined
+
 typeCheckTop :: Env -> Top () -> Either TypeCheckError (Top PossibleTypes)
 typeCheckTop _ (IncludeTop includes) = Right $ IncludeTop includes
-typeCheckTop env (FunTop funName args retType body) = undefined -- String [(String, Sexp)] Sexp [Body a]
-typeCheckTop env (VarTop varNames varType varExprs) = 
+typeCheckTop env (VarTop (VarDef varNames varType varExprs)) = 
     let 
         typedVarExprs :: [Maybe (Either TypeCheckError (Expr PossibleTypes))]
         typedVarExprs = typeCheckExpr env (TheseTypes [varType]) <<$>> varExprs
@@ -110,7 +112,17 @@ typeCheckTop env (VarTop varNames varType varExprs) =
     in 
         case typedVarExprs' of
             Left err -> Left err
-            Right typedVarExprs''  -> Right $ VarTop varNames varType typedVarExprs''
+            Right typedVarExprs'' -> Right $ VarTop (VarDef varNames varType typedVarExprs'')
+typeCheckTop env (FunTop funName args retType body) = undefined -- String [(String, Sexp)] Sexp [Body a]
+
+typeCheckStat :: Env -> Stat () -> Either TypeCheckError (Top PossibleTypes)
+typeCheckStat _ (VarStat vd) = undefined
+typeCheckStat _ (CallStat exprs) = undefined
+
+-- data Stat a
+--     = VarStat [String] Sexp [Maybe (Expr a)]
+--     | CallStat [Expr a]
+--     deriving (Show, Eq)
 
 {-
 

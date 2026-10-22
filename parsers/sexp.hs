@@ -19,7 +19,7 @@ envEntryFromTop :: Top a -> Maybe [(String, EnvEntry)]
 envEntryFromTop (FunTop name params returnType body) = 
     let type_ = List ([Atom "Fun"] ++ (snd <$> params) ++ [returnType])
     in Just [(name, envEntryFromSexp type_)]
-envEntryFromTop (VarTop names type_ values) = Just $ (\n -> (n, envEntryFromSexp type_)) <$> names
+envEntryFromTop (VarTop (VarDef names type_ _)) = Just $ (\n -> (n, envEntryFromSexp type_)) <$> names
 envEntryFromTop (IncludeTop _) = Nothing
 
 envFromTops :: [Top a] -> Either (String, EnvEntry, EnvEntry) Env
@@ -48,7 +48,7 @@ globalEnv ss = undefined
 
 parseTop :: Sexp -> CompileResult (Top ())
 parseTop s = (uncurry4 FunTop <$> parseFun s)
-    <|> (uncurry3 VarTop <$> parseVar s)
+    <|> (VarTop <$> parseVar s)
     <|> (IncludeTop <$> parseInclude s)
 
 parseLit :: Sexp -> CompileResult (Lit ())
@@ -113,7 +113,7 @@ parseRet (List [Atom "return", expr]) = Just <$> parseExpr expr
 parseRet (List [Atom "return"]) = pure Nothing
 parseRet _ = empty
 
-parseVar :: Sexp -> CompileResult ([String], Sexp, [Maybe (Expr ())])
+parseVar :: Sexp -> CompileResult (VarDef ()) -- ([String], Sexp, [Maybe (Expr ())])
 parseVar (Atom _) = empty
 parseVar (List (Atom "var" : rest)) =
     let 
@@ -132,7 +132,7 @@ parseVar (List (Atom "var" : rest)) =
         (names :: [String]) <- elseCompileError InvalidVarNamesError (flatNotEmptyAtoms $ head rest)
         (valueExprs :: [Maybe (Expr a)]) <- traverse (allowNil parseExpr) (drop 2 rest)
         (valueExprs2 :: [Maybe (Expr a)]) <- finalizeExprs (length names) valueExprs
-        pure (names, rest !! 1, valueExprs2)
+        pure $ VarDef names (rest !! 1) valueExprs2
 parseVar _ = empty
 
 parseIf :: Sexp -> CompileResult ([(Expr (), [Body ()])], Maybe [Body ()])
@@ -213,12 +213,12 @@ parseBody :: Sexp -> CompileResult (Body ())
 parseBody s = 
     (uncurry4 FunBody <$> parseFun s)
     <|> (RetBody <$> parseRet s)
-    <|> (uncurry3 VarBody <$> parseVar s)
+    <|> (VarBody <$> parseVar s)
     -- <|> (uncurry IfBody <$> parseIf s)
     <|> (uncurry4 ForBody <$> parseFor s)
     <|> (CallBody <$> parseCall s)
 
 parseStat :: Sexp -> CompileResult (Stat ())
 parseStat s = 
-    (uncurry3 VarStat <$> parseVar s)
+    (VarStat <$> parseVar s)
     <|> (CallStat <$> parseCall s)

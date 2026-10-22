@@ -28,22 +28,25 @@ data Expr a
 data Body a
     = FunBody String [(String, Sexp)] Sexp [Body a]
     | RetBody (Maybe (Expr a))
-    | VarBody [String] Sexp [Maybe (Expr a)]
+    | VarBody (VarDef a) -- [String] Sexp [Maybe (Expr a)]
     | IfBody [(Expr a, [Body a])] (Maybe [Body a])
     | ForBody (Maybe (Stat a)) (Maybe (Expr a)) (Maybe (Stat a)) [Body a]
     | CallBody [Expr a]
     deriving (Show, Eq)
 
 data Stat a
-    = VarStat [String] Sexp [Maybe (Expr a)]
+    = VarStat (VarDef a) -- [String] Sexp [Maybe (Expr a)]
     | CallStat [Expr a]
     deriving (Show, Eq)
 
 data Top a
     = FunTop String [(String, Sexp)] Sexp [Body a]
-    | VarTop [String] Sexp [Maybe (Expr a)] 
+    | VarTop (VarDef a) -- [String] Sexp [Maybe (Expr a)] 
     | IncludeTop [String]
     deriving Show
+
+data VarDef a = VarDef [String] Sexp [Maybe (Expr a)] 
+    deriving (Show, Eq)
 
 class (Typeable t a) where
     getReturnType :: t a -> a
