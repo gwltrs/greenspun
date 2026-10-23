@@ -111,7 +111,7 @@ typeCheckVarDef env (VarDef varNames varType varExprs) =
             Right typedVarExprs'' -> Right $ VarDef varNames varType typedVarExprs''
 
 typeCheckBody :: Env -> Sexp -> Body () -> Either TypeCheckError (Body PossibleTypes)
-typeCheckBody env returnType (FunBody _ _ _ _) = undefined
+typeCheckBody env returnType (FunBody _) = undefined
 typeCheckBody env returnType (RetBody _) = undefined
 typeCheckBody env returnType (VarBody varDef) = VarBody <$> typeCheckVarDef env varDef
 typeCheckBody env returnType (IfBody _ _) = undefined
@@ -119,13 +119,13 @@ typeCheckBody env returnType (ForBody _ _ _ _) = undefined
 typeCheckBody env returnType (CallBody _) = undefined
 
 typeCheckTop :: Env -> Top () -> Either TypeCheckError (Top PossibleTypes)
+typeCheckTop env (FunTop _) = undefined 
 typeCheckTop _ (IncludeTop includes) = Right $ IncludeTop includes
 typeCheckTop env (VarTop varDef) = VarTop <$> typeCheckVarDef env varDef
-typeCheckTop env (FunTop funName args retType body) = undefined -- String [(String, Sexp)] Sexp [Body a]
 
 typeCheckStat :: Env -> Stat () -> Either TypeCheckError (Stat PossibleTypes)
 typeCheckStat env (VarStat varDef) = VarStat <$> typeCheckVarDef env varDef
-typeCheckStat _ (CallStat exprs) = undefined
+typeCheckStat env (CallStat exprs) = CallStat <$> typeCheckCall env (TheseTypes [Atom "Void"]) exprs
 
 -- data Stat a
 --     = VarStat [String] Sexp [Maybe (Expr a)]

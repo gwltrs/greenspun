@@ -16,7 +16,7 @@ import Data.Function ((&))
 import Control.Monad (mfilter, join, foldM)
 
 envEntryFromTop :: Top a -> Maybe [(String, EnvEntry)]
-envEntryFromTop (FunTop name params returnType body) = 
+envEntryFromTop (FunTop (FunDef name params returnType body)) = 
     let type_ = List ([Atom "Fun"] ++ (snd <$> params) ++ [returnType])
     in Just [(name, envEntryFromSexp type_)]
 envEntryFromTop (VarTop (VarDef names type_ _)) = Just $ (\n -> (n, envEntryFromSexp type_)) <$> names
@@ -47,7 +47,7 @@ globalEnv ss = undefined
     --     Nothing
 
 parseTop :: Sexp -> CompileResult (Top ())
-parseTop s = (uncurry4 FunTop <$> parseFun s)
+parseTop s = (FunTop <$> parseFun s)
     <|> (VarTop <$> parseVar s)
     <|> (IncludeTop <$> parseInclude s)
 
@@ -92,18 +92,23 @@ parseInclude (List (Atom "include" : includes)) =
             Just includes' -> pure includes'
 parseInclude _ = empty
 
-parseFun :: Sexp -> CompileResult (String, [(String, Sexp)], Sexp, [Body ()])
+parseFun :: Sexp -> CompileResult (FunDef ())
 parseFun (Atom _) = empty
 parseFun (List ((Atom "fun") : (Atom name) : (List args) : rest))
     | odd $ length args = failCompile ParamSexpsArentEvenError
     | any (\case (List _) -> True; (Atom _) -> False) $ fsts args = failCompile ParamNameCantBeAListError
     | hasArrow && (length rest == 1) = failCompile DanglingArrowInFunError
-    | otherwise = (name, argPairs, returnType, ) <$> statements
+    | otherwise = FunDef name argPairs returnType <$> statements
         where
+            argPairs :: [(String, Sexp)]
             argPairs = (\l -> (fromAtom $ head l, l !! 1)) <$> chunk 2 args
+            hasArrow :: Bool
             hasArrow = (rest !? 0) == Just (Atom "->")
+            returnType :: Sexp
             returnType = if hasArrow then rest !! 1 else Atom "Void"
+            statementSexps :: [Sexp]
             statementSexps = if hasArrow then drop 2 rest else rest
+            statements :: CompileResult [Body ()]
             statements = mapM parseBody statementSexps
 parseFun (List (Atom "fun" : _)) = failCompile FoundFunButNoNameAtomAndParamsListError
 parseFun _ = empty
@@ -211,7 +216,7 @@ parseFor _ = empty
 
 parseBody :: Sexp -> CompileResult (Body ())
 parseBody s = 
-    (uncurry4 FunBody <$> parseFun s)
+    (FunBody <$> parseFun s)
     <|> (RetBody <$> parseRet s)
     <|> (VarBody <$> parseVar s)
     -- <|> (uncurry IfBody <$> parseIf s)

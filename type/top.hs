@@ -26,26 +26,29 @@ data Expr a
     deriving (Show, Eq, Functor)
 
 data Body a
-    = FunBody String [(String, Sexp)] Sexp [Body a]
+    = FunBody (FunDef a) -- String [(String, Sexp)] Sexp [Body a]
     | RetBody (Maybe (Expr a))
-    | VarBody (VarDef a) -- [String] Sexp [Maybe (Expr a)]
+    | VarBody (VarDef a)
     | IfBody [(Expr a, [Body a])] (Maybe [Body a])
     | ForBody (Maybe (Stat a)) (Maybe (Expr a)) (Maybe (Stat a)) [Body a]
     | CallBody [Expr a]
     deriving (Show, Eq)
 
 data Stat a
-    = VarStat (VarDef a) -- [String] Sexp [Maybe (Expr a)]
+    = VarStat (VarDef a)
     | CallStat [Expr a]
     deriving (Show, Eq)
 
 data Top a
-    = FunTop String [(String, Sexp)] Sexp [Body a]
-    | VarTop (VarDef a) -- [String] Sexp [Maybe (Expr a)] 
+    = FunTop (FunDef a) -- String [(String, Sexp)] Sexp [Body a]
+    | VarTop (VarDef a)
     | IncludeTop [String]
     deriving Show
 
 data VarDef a = VarDef [String] Sexp [Maybe (Expr a)] 
+    deriving (Show, Eq)
+
+data FunDef a = FunDef String [(String, Sexp)] Sexp [Body a]
     deriving (Show, Eq)
 
 class (Typeable t a) where
