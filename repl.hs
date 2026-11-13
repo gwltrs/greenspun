@@ -4,14 +4,15 @@ import Prelude hiding (read)
 import IO (fileNameSexps, greenFileSexps, findRelativeGreenFilePaths, findGreenFilePathByName)
 import System.IO (readFile)
 import Type.Sexp (Sexp)
-import Type.Top (Top, PossibleTypes)
+import Type.Top (Top, PossibleTypes, setTopID)
 import Type.Parser.String (runParser)
 import Data.Maybe (fromJust)
-import Utils ((<<$>>), fromRight)
+import Utils ((<<$>>), fromRight, mapListWithIndex)
 import Parsers.Sexp (parseTop)
 import qualified Parsers.String as PS
 import Type.CompileResult (fromCompileSuccess, CompileResult(..), CompileError)
 import PrettyGHCI (prettifyGHCI)
+import TypeCheck (typeCheckTop, globalEnv)
 
 file :: String -> IO String
 file name = do
@@ -30,16 +31,23 @@ sexps name = do
             then pure sexps'
             else error ("Parsed sexps, but found text remaining: " ++ remainingText)
 
-tops :: String -> IO [Top ()]
+tops :: String -> IO [Top () Int]
 tops name = do
     (sexps' :: [Sexp]) <- sexps name
-    ((CompileResult res) :: CompileResult [Top ()]) <- pure $ mapM parseTop sexps'
+    ((CompileResult res) :: CompileResult [Top () ()]) <- pure $ mapM parseTop sexps'
     case res of
-        Left (errs :: [CompileError]) -> error ("Failed to parse tops with errors: " ++ (unlines $ show <$> errs))
-        Right (tops' :: Maybe [Top ()]) -> 
+        Left (errs :: [CompileError]) -> error ("Failed to parse tops: " ++ (unlines $ show <$> errs))
+        Right (tops' :: Maybe [Top () ()]) -> 
             case tops' of
                 Nothing -> error "Failed to find tops to parse"
-                Just (tops'' :: [Top ()]) -> pure tops''
+                Just (tops'' :: [Top () ()]) -> pure $ mapListWithIndex setTopID tops''
 
-typedTops :: String -> IO [Top PossibleTypes]
-typedTops name = undefined
+-- typedTops :: String -> IO [Top PossibleTypes Int]
+-- typedTops name = do
+--     (tops' :: [Top ()]) <- tops name
+--     case globalEnv tops' of
+--         Left err -> error ("Failed to create global env: " ++ show err)
+--         Right env -> 
+--             case mapM (typeCheckTop env) tops' of
+--                 Left err' -> error ("Failed to type-check tops: " ++ show err')
+--                 Right tops'' -> pure tops''

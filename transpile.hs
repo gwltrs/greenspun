@@ -8,7 +8,7 @@ import Data.Maybe (fromMaybe)
 import Data.Bifunctor (second)
 import Data.Char (ord)
 
-transpileAll :: [Top a] -> String
+transpileAll :: [Top a i] -> String
 transpileAll tops = undefined -- unlines $ transpileTop <$> tops
 
 transpileType :: Sexp -> String

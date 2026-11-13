@@ -39,10 +39,10 @@ data Stat a
     | CallStat [Expr a]
     deriving (Show, Eq)
 
-data Top a
-    = FunTop (FunDef a) -- String [(String, Sexp)] Sexp [Body a]
-    | VarTop (VarDef a)
-    | IncludeTop [String]
+data Top t i
+    = FunTop (FunDef t) i -- String [(String, Sexp)] Sexp [Body a]
+    | VarTop (VarDef t) i
+    | IncludeTop [String] i
     deriving Show
 
 data VarDef a = VarDef [String] Sexp [Maybe (Expr a)] 
@@ -54,6 +54,16 @@ data FunDef a = FunDef String [(String, Sexp)] Sexp [Body a]
 class (Typeable t a) where
     getReturnType :: t a -> a
     setReturnType :: b -> t a -> t b
+
+getTopID :: Top a i -> i
+getTopID (FunTop (FunDef {}) id) = id
+getTopID (VarTop (VarDef {}) id) = id
+getTopID (IncludeTop _ id) = id
+
+setTopID :: j -> Top a i -> Top a j
+setTopID id (FunTop fd@(FunDef {}) _) = FunTop fd id
+setTopID id (VarTop vd@(VarDef {}) _) = VarTop vd id
+setTopID id (IncludeTop includes _) = IncludeTop includes id
 
 getTheseReturnTypes :: forall t. Typeable t PossibleTypes => t PossibleTypes -> [Sexp]
 getTheseReturnTypes t =
@@ -81,6 +91,15 @@ applyFunctionTypeToCall funType@(List (Atom "->" : types)) ((VarExpr () varName)
     in
         VarExpr funType varName : mapListWithIndex mapArg argExprs
 applyFunctionTypeToCall _ _ = nonEx "applyFunctionTypeToCall"
+
+thisType :: Sexp -> PossibleTypes
+thisType s = TheseTypes [s]
+
+thisAtom :: String -> PossibleTypes
+thisAtom a = thisType $ Atom a
+
+voidType :: PossibleTypes
+voidType = thisAtom "Void"
 
 instance Typeable Lit a where
     getReturnType (BoolLit a _) = a

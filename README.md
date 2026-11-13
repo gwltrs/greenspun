@@ -1,3 +1,3 @@
 # REPL
 
-The `.ghci` and `prettyghci.hs` files are setup so that only `ghci` is required for playing with the repl
+The `.ghci` and `prettyghci.hs` files are configured so that the prettifier is loaded with just `ghci`. The `repl.hs` contains unsafe but convenient functions intended for REPL testing.

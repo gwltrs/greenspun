@@ -14,24 +14,25 @@ import Distribution.Simple.Utils (safeLast, safeInit)
 import Data.Maybe
 import Data.Function ((&))
 import Control.Monad (mfilter, join, foldM)
+import Type.CompileResult
 
-envEntryFromTop :: Top a -> Maybe [(String, EnvEntry)]
-envEntryFromTop (FunTop (FunDef name params returnType body)) = 
-    let type_ = List ([Atom "Fun"] ++ (snd <$> params) ++ [returnType])
-    in Just [(name, envEntryFromSexp type_)]
-envEntryFromTop (VarTop (VarDef names type_ _)) = Just $ (\n -> (n, envEntryFromSexp type_)) <$> names
-envEntryFromTop (IncludeTop _) = Nothing
+-- envEntryFromTop :: Top () () -> [(String, EnvEntry)]
+-- envEntryFromTop (FunTop (FunDef name params returnType body)) = 
+--     let type_ = List ([Atom "Fun"] ++ (snd <$> params) ++ [returnType])
+--     in [(name, envEntryFromSexp type_)]
+-- envEntryFromTop (VarTop (VarDef names type_ _)) = (\n -> (n, envEntryFromSexp type_)) <$> names
+-- envEntryFromTop (IncludeTop _) = []
 
-envFromTops :: [Top a] -> Either (String, EnvEntry, EnvEntry) Env
-envFromTops tops =
-    let 
-        entries :: [(String, EnvEntry)]
-        entries = join (mapMaybe envEntryFromTop tops)
-    in
-        foldM (\env (name, entry) -> addToEnv name entry env) emptyEnv entries
+-- envFromTops :: [Top () ()] -> Either (String, EnvEntry, EnvEntry) Env
+-- envFromTops tops =
+--     let 
+--         entries :: [(String, EnvEntry)]
+--         entries = envEntryFromTop =<< tops
+--     in
+--         foldM (\env (name, entry) -> addToEnv name entry env) emptyEnv entries
 
-globalEnv :: [Sexp] -> Env
-globalEnv ss = undefined
+-- globalEnv :: [Sexp] -> Env
+-- globalEnv ss = undefined
     -- funDecsList <- concat <$> mapM parseFunDec ss
     -- varDecsList <- concat <$> mapM parseVarDec ss
     -- let funDecsSet = fromList funDecsList
@@ -46,10 +47,10 @@ globalEnv ss = undefined
     -- else
     --     Nothing
 
-parseTop :: Sexp -> CompileResult (Top ())
-parseTop s = (FunTop <$> parseFun s)
-    <|> (VarTop <$> parseVar s)
-    <|> (IncludeTop <$> parseInclude s)
+parseTop :: Sexp -> CompileResult (Top () ())
+parseTop s = ((`FunTop` ()) <$> parseFun s)
+    <|> ((`VarTop` ()) <$> parseVar s)
+    <|> ((`IncludeTop` ()) <$> parseInclude s)
 
 parseLit :: Sexp -> CompileResult (Lit ())
 parseLit (Atom "true") = pure $ BoolLit () True
@@ -74,19 +75,19 @@ parseIdentifier (Atom a) = pure a
 parseIdentifier _ = empty
 
 parseExpr :: Sexp -> CompileResult (Expr ())
-parseExpr s = 
-    (CallExpr <$> parseCall s) 
+parseExpr s =
+    (CallExpr <$> parseCall s)
         <|> (LitExpr <$> parseLit s)
         <|> (VarExpr () <$> parseIdentifier s)
 
 parseInclude :: Sexp -> CompileResult [String]
-parseInclude (List (Atom "include" : includes)) = 
-    let 
+parseInclude (List (Atom "include" : includes)) =
+    let
         mapInclude :: Sexp -> Maybe String
         mapInclude (List _) = Nothing
         mapInclude (Atom s) = (Just s) & mfilter (\s -> length s >= 3)
-    in 
-        if null includes then failCompile IncludesEmptyError else 
+    in
+        if null includes then failCompile IncludesEmptyError else
         case traverse mapInclude includes of
             Nothing -> failCompile IncludeInvalidError
             Just includes' -> pure includes'
@@ -121,7 +122,7 @@ parseRet _ = empty
 parseVar :: Sexp -> CompileResult (VarDef ()) -- ([String], Sexp, [Maybe (Expr ())])
 parseVar (Atom _) = empty
 parseVar (List (Atom "var" : rest)) =
-    let 
+    let
         finalizeExprs :: Int -> [Maybe (Expr ())] -> CompileResult [Maybe (Expr ())]
         finalizeExprs namesLen valueExprs_ =
             let valLen = length valueExprs_ in
@@ -143,13 +144,13 @@ parseVar _ = empty
 parseIf :: Sexp -> CompileResult ([(Expr (), [Body ()])], Maybe [Body ()])
 parseIf (Atom _) = empty
 parseIf (List [Atom "if"]) = failCompile EmptyIfStatementError
-parseIf (List sexps@(Atom "if" : _)) = 
+parseIf (List sexps@(Atom "if" : _)) =
     let
         keywords = Atom <$> ["if", ":else-if", ":else"]
         ifSplits = splitAndKeepDelim (`elem` keywords) sexps
     in do
         ifChunks <- traverse parseIfChunk (traceLabel "ifSplits" ifSplits)
-        if not (validateIfChunks ifChunks) then 
+        if not (validateIfChunks ifChunks) then
             failCompile IfStatementIncorrectKeywordSequenceError
         else
             let (conds, elses) = break isElseChunk ifChunks
@@ -185,9 +186,9 @@ fromElseChunk _ = nonEx "fromElseChunk"
 
 validateIfChunks :: [IfChunk] -> Bool
 validateIfChunks ((If _) : cs) = initIsGood && lastIsGood
-    where 
+    where
         initIsGood = all isElseIfChunk (safeInit cs)
-        lastIsGood = ((not . isIfChunk) <$> safeLast cs) /= Just False
+        lastIsGood = (not . isIfChunk <$> safeLast cs) /= Just False
 validateIfChunks _ = False
 
 parseIfChunk :: [Sexp] -> CompileResult IfChunk
@@ -203,19 +204,19 @@ allowNil parser sexp = if sexp == List [] then pure Nothing else Just <$> parser
 
 parseFor :: Sexp -> CompileResult (Maybe (Stat ()), Maybe (Expr ()), Maybe (Stat ()), [Body ()])
 parseFor (Atom _) = empty
-parseFor (List (Atom "for" : rest)) = 
+parseFor (List (Atom "for" : rest)) =
     if length rest < 3 then failCompile ForLoopTooFewSexpsError else
-    let 
+    let
         init = (allowNil parseStat) (rest !! 0)
         cond = (allowNil parseExpr) (rest !! 1)
         update = (allowNil parseStat) (rest !! 2)
         body = traverse parseBody (drop 3 rest)
-    in 
+    in
         (,,,) <$> init <*> cond <*> update <*> body
 parseFor _ = empty
 
 parseBody :: Sexp -> CompileResult (Body ())
-parseBody s = 
+parseBody s =
     (FunBody <$> parseFun s)
     <|> (RetBody <$> parseRet s)
     <|> (VarBody <$> parseVar s)
@@ -224,6 +225,6 @@ parseBody s =
     <|> (CallBody <$> parseCall s)
 
 parseStat :: Sexp -> CompileResult (Stat ())
-parseStat s = 
+parseStat s =
     (VarStat <$> parseVar s)
     <|> (CallStat <$> parseCall s)

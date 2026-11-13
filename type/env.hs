@@ -8,22 +8,35 @@ data EnvEntry = VarEntry Sexp | FunsEntry [Sexp] deriving Show
 
 newtype Env = Env (M.Map String EnvEntry)
 
+-- data GlobalEnvEntry = GlobalVarEntry (Int, Sexp) | GlobalFunsEntry [(Int, Sexp)] deriving Show
+
+-- newtype GlobalEnv = GlobalEnv (M.Map String EnvEntry)
+
 addToEnv :: String -> EnvEntry -> Env -> Either (String, EnvEntry, EnvEntry) Env
 addToEnv name entry (Env map) = 
     case M.lookup name map of
         Nothing -> Right $ Env $ M.insert name entry map
         Just found' -> 
             case (entry, found') of
-                (FunsEntry l, FunsEntry r) -> 
+                (FunsEntry l, FunsEntry r) ->
                     -- TODO: add check for obvious function conflicts
                     Right $ Env $ M.insert name (FunsEntry (l ++ r)) map
                 _ -> 
                     Left (name, entry, found')
 
+addManyToEnv :: [(String, EnvEntry)] -> Env -> Either (String, EnvEntry, EnvEntry) Env
+addManyToEnv entries env = foldr folder (Right env) entries
+    where
+        folder :: (String, EnvEntry) -> Either (String, EnvEntry, EnvEntry) Env -> Either (String, EnvEntry, EnvEntry) Env
+        folder _ (Left err) = Left err
+        folder (name, entry) (Right env) = addToEnv name entry env
+
+envFromMany :: [(String, EnvEntry)] -> Either (String, EnvEntry, EnvEntry) Env
+envFromMany entries = addManyToEnv entries emptyEnv
+
 envEntryFromSexp :: Sexp -> EnvEntry
-envEntryFromSexp a@(Atom _) = VarEntry a
 envEntryFromSexp f@(List (Atom "Fun" : _)) = FunsEntry [f]
-envEntryFromSexp l@(List _) = VarEntry l
+envEntryFromSexp s = VarEntry s
 
 emptyEnv :: Env
 emptyEnv = Env M.empty

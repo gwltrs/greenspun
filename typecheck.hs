@@ -3,6 +3,7 @@ module TypeCheck where
 import Type.Top
 import Type.Sexp
 import Type.Env
+import Parsers.Sexp
 import Data.Map (lookup)
 import Data.Maybe (fromMaybe, fromJust, mapMaybe)
 import Data.List (intersect, union, nub, singleton)
@@ -13,18 +14,23 @@ import Type.Top
 import Data.Functor ((<&>))
 import Data.Function ((&))
 import Control.Monad (when)
-import Type.Top (applyFunctionTypeToCall)
+import Type.Top (applyFunctionTypeToCall, voidType)
 import ListT
 import MaybeT
+import Type.Env (addManyToEnv)
+import Type.GlobalEnv
 
 data TypeCheckError 
     = ExpectedXsButGotYsError PossibleTypes PossibleTypes
     -- | CouldNotDetermineTypeOfXError Sexp
     | NoValueWithNameError String
-    | CallMadeWithNonFunctionType Sexp
-    | NoFunctionWithThatArityOrReturnType String
+    | CallMadeWithNonFunctionTypeError Sexp
+    | NoFunctionWithThatArityOrReturnTypeError String
     | NoFunctionWithThoseArgTypesError String
     | AmbiguousFunctionOverloadError String 
+    | DuplicateVariableNameError String
+    | VarNameAndFunNameConflictError String
+        deriving Show
 
 typeCheckLit :: Lit () -> Lit PossibleTypes
 typeCheckLit (BoolLit () b) = BoolLit (TheseTypes [Atom "Bool"]) b
@@ -38,12 +44,12 @@ typeCheckVarExpr (Env map) expectedTypes varName =
         Just allEntries' -> (, varName) <$> intersectPossibleTypes expectedTypes (TheseTypes allEntries')
 
 typeCheckCall :: Env -> PossibleTypes -> [Expr ()] -> Either TypeCheckError [Expr PossibleTypes]
-typeCheckCall (Env map) _ ((LitExpr l) : args) = Left $ CallMadeWithNonFunctionType $ getOneReturnType $ typeCheckLit l
+typeCheckCall (Env map) _ ((LitExpr l) : args) = Left $ CallMadeWithNonFunctionTypeError $ getOneReturnType $ typeCheckLit l
 typeCheckCall (Env map) _ (callExpr@(CallExpr funName) : args) = error "typeCheckCall: haven't implemented call typechecking when the function is produced by a function call"
 typeCheckCall env@(Env map) expectedReturnType ve@((VarExpr () funName) : args) = 
     case lookup funName map of
         Nothing -> Left $ NoValueWithNameError funName
-        Just (VarEntry sexp) -> Left $ CallMadeWithNonFunctionType sexp
+        Just (VarEntry sexp) -> Left $ CallMadeWithNonFunctionTypeError sexp
         Just (FunsEntry sexps) -> 
             let
                 funsWithMatchingArity :: [Sexp]
@@ -55,7 +61,7 @@ typeCheckCall env@(Env map) expectedReturnType ve@((VarExpr () funName) : args) 
                 funsWithMatchingReturnType :: [Sexp]
                 funsWithMatchingReturnType = filter (filterBasedOnReturnType expectedReturnType) funsWithMatchingArity
             in case funsWithMatchingReturnType of
-                [] -> Left $ NoFunctionWithThatArityOrReturnType funName
+                [] -> Left $ NoFunctionWithThatArityOrReturnTypeError funName
                 -- [exactMatch] -> Right $ Typed (TheseTypes [fromJust $ returnType exactMatch], ve)
                 -- Right (TheseTypes [fromJust $ returnType exactMatch], ve)
                 [exactMatch :: Sexp] -> Right $ (TheseTypes . singleton) <<$>> applyFunctionTypeToCall exactMatch ve
@@ -98,34 +104,70 @@ typeCheckExpr env expected (VarExpr () varName) =
         Right (type_, varName') -> Right $ VarExpr type_ varName'
 typeCheckExpr env expected (CallExpr exprs) = CallExpr <$> typeCheckCall env expected exprs
 
-typeCheckVarDef :: Env -> VarDef () -> Either TypeCheckError (VarDef PossibleTypes)
+typeCheckVarDef :: Env -> VarDef () -> Either TypeCheckError (Env, VarDef PossibleTypes)
 typeCheckVarDef env (VarDef varNames varType varExprs) = 
     let 
         typedVarExprs :: [Maybe (Either TypeCheckError (Expr PossibleTypes))]
         typedVarExprs = typeCheckExpr env (TheseTypes [varType]) <<$>> varExprs
         typedVarExprs' :: Either TypeCheckError [Maybe (Expr PossibleTypes)]
         typedVarExprs' = sequenceMaybes typedVarExprs
+        env' :: Either (String, EnvEntry, EnvEntry) Env
+        env' = addManyToEnv ((, envEntryFromSexp varType) <$> varNames) env
     in 
         case typedVarExprs' of
             Left err -> Left err
-            Right typedVarExprs'' -> Right $ VarDef varNames varType typedVarExprs''
+            Right typedVarExprs'' -> 
+                case env' of
+                    Left (dupVarName, _, _) -> Left $ DuplicateVariableNameError dupVarName
+                    Right env'' -> Right (env'', VarDef varNames varType typedVarExprs'')
 
-typeCheckBody :: Env -> Sexp -> Body () -> Either TypeCheckError (Body PossibleTypes)
+typeCheckBody :: Env -> Sexp -> Body () -> Either TypeCheckError (Env, Body PossibleTypes)
 typeCheckBody env returnType (FunBody _) = undefined
-typeCheckBody env returnType (RetBody _) = undefined
-typeCheckBody env returnType (VarBody varDef) = VarBody <$> typeCheckVarDef env varDef
+typeCheckBody env returnType (RetBody retExpr) = 
+    case (returnType, retExpr) of
+        (Atom "Void", Nothing) -> Right (env, RetBody Nothing)
+        (Atom "Void", Just retExpr') -> Left $ ExpectedXsButGotYsError voidType NonVoidTypes
+        (nonVoidReturnType, Nothing) -> Left $ ExpectedXsButGotYsError NonVoidTypes voidType
+        (nonVoidReturnType, Just retExpr') -> (env, ) . RetBody . Just <$> typeCheckExpr env (thisType returnType) retExpr'
+typeCheckBody env returnType (VarBody varDef) = VarBody <<$>> typeCheckVarDef env varDef
 typeCheckBody env returnType (IfBody _ _) = undefined
 typeCheckBody env returnType (ForBody _ _ _ _) = undefined
-typeCheckBody env returnType (CallBody _) = undefined
+typeCheckBody env returnType (CallBody exprs) = (env, ) . CallBody <$> typeCheckCall env voidType exprs
 
-typeCheckTop :: Env -> Top () -> Either TypeCheckError (Top PossibleTypes)
-typeCheckTop env (FunTop _) = undefined 
-typeCheckTop _ (IncludeTop includes) = Right $ IncludeTop includes
-typeCheckTop env (VarTop varDef) = VarTop <$> typeCheckVarDef env varDef
+typeCheckTop :: Env -> Top () Int -> Either TypeCheckError (Top PossibleTypes Int)
+typeCheckTop env (FunTop _ _) = undefined 
+typeCheckTop _ (IncludeTop includes id) = Right $ IncludeTop includes id
+typeCheckTop env (VarTop varDef id) = (`VarTop` id) . snd <$> typeCheckVarDef env varDef
 
-typeCheckStat :: Env -> Stat () -> Either TypeCheckError (Stat PossibleTypes)
-typeCheckStat env (VarStat varDef) = VarStat <$> typeCheckVarDef env varDef
-typeCheckStat env (CallStat exprs) = CallStat <$> typeCheckCall env (TheseTypes [Atom "Void"]) exprs
+typeCheckStat :: Env -> Stat () -> Either TypeCheckError (Env, Stat PossibleTypes)
+typeCheckStat env (VarStat varDef) = VarStat <<$>> typeCheckVarDef env varDef
+typeCheckStat env (CallStat exprs) = (env, ) . CallStat <$> typeCheckCall env (TheseTypes [Atom "Void"]) exprs
+
+globalEnv :: [Top () Int] -> Either TypeCheckError GlobalEnv
+globalEnv tops = 
+    let 
+        env :: Either (String, Sexp, Sexp) GlobalEnv
+        env = globalEnvFromTops tops
+    in 
+        case env of
+            Right env -> Right env
+            Left (name, leftType, rightType) ->
+                case (isFun leftType, isFun rightType) of
+                    (False, False) -> Left $ DuplicateVariableNameError name
+                    (False, True) -> Left $ VarNameAndFunNameConflictError name
+                    (True, False) -> Left $ VarNameAndFunNameConflictError name
+                    (True, True) -> Left $ AmbiguousFunctionOverloadError name
+
+-- topEnvEntry :: Top () -> [(String, EnvEntry)]
+-- topEnvEntry (IncludeTop _) = []
+-- topEnvEntry (VarTop varDef) = varDefEnvEntry varDef
+-- topEnvEntry (FunTop funDef) = [funDefEnvEntry funDef]
+
+-- varDefEnvEntry :: VarDef () -> [(String, EnvEntry)]
+-- varDefEnvEntry = undefined
+
+-- funDefEnvEntry :: FunDef () -> (String, EnvEntry)
+-- funDefEnvEntry = undefined
 
 -- data Stat a
 --     = VarStat [String] Sexp [Maybe (Expr a)]
