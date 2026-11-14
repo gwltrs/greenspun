@@ -101,6 +101,9 @@ thisAtom a = thisType $ Atom a
 voidType :: PossibleTypes
 voidType = thisAtom "Void"
 
+getFunDefType :: FunDef a -> Sexp
+getFunDefType (FunDef _ params returnType _) = List ([Atom "->"] ++ (snd <$> params) ++ [returnType]) 
+
 instance Typeable Lit a where
     getReturnType (BoolLit a _) = a
     getReturnType (IntLit a _) = a
